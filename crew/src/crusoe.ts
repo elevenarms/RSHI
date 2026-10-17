@@ -13,6 +13,7 @@ import type { JsonValue } from '@spotless/core';
 import type { ModelProvider, ModelTurn, OpenAiToolCall, TurnRequest, TurnStop } from '@spotless/bench';
 import { ProviderError, openaiMessages, openaiUsage } from '@spotless/bench';
 import type { CrewEventInput, Role } from './contracts.ts';
+import { logCall } from './calllog.ts';
 
 export const CRUSOE_BASE_URL = process.env['CRUSOE_BASE_URL'] ?? 'https://api.inference.crusoecloud.com/v1';
 
@@ -165,6 +166,11 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
   // A 429 / 503 / 5xx / broken connection never ends a call before this much time has passed.
   const transientBudgetMs = Number(process.env['CREW_RETRY_BUDGET_MS'] ?? '300000');
   const firstTry = Date.now();
+  const startedAt = new Date().toISOString();
+  let throttledHere = 0;
+  const record = (reply: any, error?: string): void =>
+    logCall({ role: options.stream?.role ?? 'unknown', model: body.model, ...(options.stream?.episodeKey === undefined ? {} : { episodeKey: options.stream.episodeKey }), startedAt, endedAt: new Date().toISOString(), ms: Date.now() - firstTry, attempts: attemptsMade, throttled: throttledHere, body, reply, ...(error === undefined ? {} : { error }) });
+  let attemptsMade = 0;
   const timeoutMs = options.timeoutMs ?? 5 * 60_000;
   const clean = (s: string): string => s.split(key).join('[key]');
   for (let attempt = 0; ; attempt++) {
@@ -172,6 +178,7 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
     if (cap !== undefined && Array.isArray(body['messages'])) body = { ...body, messages: capImages(body['messages'] as any[], cap) };
     await acquire(body.model);
     await enter(body.model);
+    attemptsMade += 1;
     const started = performance.now();
     let failure: ProviderError;
     let again = false;
@@ -187,6 +194,7 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
         try {
           const reply = await readStream(response, body, options.stream as StreamTag);
           leave(body.model);
+          record(reply);
           return { reply, ms: Math.round(performance.now() - started) };
         } catch (error) {
           throw new StreamBroken(error instanceof Error ? error.message : String(error));
@@ -197,6 +205,7 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
         try {
           const reply = JSON.parse(text);
           leave(body.model);
+          record(reply);
           return { reply, ms: Math.round(performance.now() - started) };
         } catch {
           failure = new ProviderError('api', 'reply is not JSON', response.status);
@@ -226,6 +235,7 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
     } catch (error) {
       if (error instanceof ProviderError) {
         leave(body.model);
+        record(null, error.message);
         throw error;
       }
       const name = error instanceof StreamBroken ? 'StreamBroken' : error instanceof Error ? error.name : '';
@@ -237,9 +247,15 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
     }
     leave(body.model);
     const transient = failure.kind === 'rate_limit' || failure.status === 503 || failure.kind === 'api' || failure.kind === 'connection' || failure.kind === 'timeout';
-    if (failure.kind === 'rate_limit' || failure.status === 503) throttled.set(body.model, (throttled.get(body.model) ?? 0) + 1);
+    if (failure.kind === 'rate_limit' || failure.status === 503) {
+      throttled.set(body.model, (throttled.get(body.model) ?? 0) + 1);
+      throttledHere += 1;
+    }
     const withinBudget = transient ? Date.now() - firstTry < transientBudgetMs : attempt < maxRetries;
-    if (!again || !withinBudget || (options.maxRetries === 0)) throw failure;
+    if (!again || !withinBudget || (options.maxRetries === 0)) {
+      record(null, failure.message);
+      throw failure;
+    }
     tally(body.model, { in: 0, out: 0, cached: 0, retry: true });
     const backoff = Math.min(30_000, 1000 * 2 ** Math.min(attempt, 5)) * (0.5 + Math.random());
     await pause(Math.min(60_000, Math.max(wait ?? 0, backoff)));

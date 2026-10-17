@@ -13,7 +13,9 @@
  * control flow runs end to end with no spend.
  */
 
-import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { ARCHIVE_ROOT, archiveRun } from './archive.ts';
+import { setCallLog, syncCallLog } from './calllog.ts';
 import { join } from 'node:path';
 import { loadEnvFile } from '@spotless/bench';
 import type { CrewEvent, Genome, TaskSpec } from './contracts.ts';
@@ -54,14 +56,17 @@ const num = (flags: Map<string, string>, k: string, d: number): number => {
 const STUDIO_DIR = join(REPO_ROOT, 'apps', 'studio', 'dist');
 const RUNS_DIR = join(CREW_ROOT, 'runs');
 
-function newRun(mode: string): { runId: string; runDir: string; bus: EventBus } {
-  const runId = `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}-${mode}`;
+function newRun(mode: string, existing?: string): { runId: string; runDir: string; bus: EventBus } {
+  const runId = existing ?? `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}-${mode}`;
   const runDir = join(RUNS_DIR, runId);
   mkdirSync(runDir, { recursive: true });
+  const past = existing === undefined ? [] : readEvents(runDir);
+  setCallLog(join(runDir, 'calls.jsonl'));
   const bus = new EventBus(runId, runDir, (e: CrewEvent) => {
     const line = eventLine(e);
     if (line !== null) console.log(line);
   });
+  bus.events.push(...past);
   setStreamSink((e) => bus.emit(e));
   setRateLog((line) => bus.log(line));
   return { runId, runDir, bus };
@@ -77,6 +82,47 @@ async function serve(bus: EventBus): Promise<void> {
   }
 }
 
+interface Checkpoint {
+  readonly runId: string;
+  readonly flags: { [k: string]: string };
+  readonly env: { [k: string]: string };
+  readonly generation: number;
+  readonly generationsTotal: number;
+  readonly incumbentId: string;
+  readonly taskSeeds: unknown;
+  readonly decisions: unknown;
+  readonly at: string;
+}
+
+/** The CREW_* knobs of this run (never a key or secret). */
+function crewEnv(): { [k: string]: string } {
+  return Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('CREW_') && v !== undefined && !/KEY|TOKEN|SECRET|PASSWORD/i.test(k))) as { [k: string]: string };
+}
+
+function writeCheckpoint(runDir: string, c: Checkpoint): void {
+  syncCallLog();
+  const file = join(runDir, 'checkpoint.json');
+  writeFileSync(`${file}.tmp`, `${JSON.stringify(c, null, 1)}\n`);
+  renameSync(`${file}.tmp`, file);
+}
+
+function readCheckpoint(runDir: string): Checkpoint | null {
+  const file = join(runDir, 'checkpoint.json');
+  return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as Checkpoint) : null;
+}
+
+/** Archives the run into packages/crew/runs (CREW_AUTO_ARCHIVE=0 turns it off). Never breaks the run. */
+function autoArchive(runDir: string): void {
+  if (process.env['CREW_AUTO_ARCHIVE'] === '0' || process.env['CREW_FAKE'] === '1') return;
+  try {
+    syncCallLog();
+    const a = archiveRun(runDir, process.env['CREW_MEMORY_DIR'] ?? join(CREW_ROOT, 'memory'));
+    console.log(`archived: ${a.dir} (${a.files} files, ${(a.bytes / 1e6).toFixed(1)} MB)`);
+  } catch (error) {
+    console.log(`archive failed: ${String(error)}`);
+  }
+}
+
 function printUsage(): void {
   console.log('\nTokens per model:');
   for (const [m, t] of usageTotals) console.log(`  ${m}: ${t.requests} req, ${t.in} in (${t.cached} cached), ${t.out} out, ${t.retries} retries`);
@@ -84,6 +130,17 @@ function printUsage(): void {
 
 async function main(): Promise<void> {
   const { cmd, flags } = args(process.argv.slice(2));
+  const resumeRun = flags.get('resume-run');
+  let checkpoint: Checkpoint | null = null;
+  if (cmd === 'evolve' && resumeRun !== undefined) {
+    checkpoint = readCheckpoint(join(RUNS_DIR, resumeRun));
+    if (checkpoint === null) throw new Error(`no checkpoint.json in run ${resumeRun}`);
+    for (const [k, v] of Object.entries(checkpoint.env)) if (process.env[k] === undefined) process.env[k] = String(v);
+    for (const [k, v] of Object.entries(checkpoint.flags)) if (!flags.has(k)) flags.set(k, v);
+    flags.set('resume', 'true');
+    // --generations is the run's own total: what is left of it.
+    if (!process.argv.includes('--generations')) flags.set('generations', String(Math.max(0, checkpoint.generationsTotal - checkpoint.generation)));
+  }
   if (flags.get('dry') === 'true') process.env['CREW_FAKE'] = '1';
   const tier = (flags.get('tier') ?? 'fast') as Tier;
   const concurrency = num(flags, 'concurrency', CONCURRENCY);
@@ -100,11 +157,25 @@ async function main(): Promise<void> {
     for (const l of memory.lessons().slice(0, 30)) console.log(`(${l.confidence.toFixed(2)} +${l.support}/-${l.contradict}) [${l.tags.join(',')}] ${l.text}`);
     return;
   }
+  if (cmd === 'archive') {
+    const runs = flags.get('all') === 'true' ? (existsSync(RUNS_DIR) ? readdirSync(RUNS_DIR).filter((d) => !/smoke|dry/.test(d)) : []) : [flags.get('run') ?? ''];
+    for (const run of runs) {
+      const dir = join(RUNS_DIR, run);
+      if (run === '' || !existsSync(dir)) throw new Error(`no run ${run}`);
+      const ck = readCheckpoint(dir);
+      const memDir = (ck?.env['CREW_MEMORY_DIR'] as string | undefined) ?? flags.get('memory') ?? process.env['CREW_MEMORY_DIR'] ?? null;
+      const a = archiveRun(dir, memDir);
+      console.log(`${run}: ${a.files} files, ${(a.bytes / 1e6).toFixed(2)} MB -> ${a.dir}${memDir === null ? ' (no memory snapshot)' : ''}`);
+    }
+    return;
+  }
   if (cmd === 'serve') {
     const run = flags.get('run') ?? (existsSync(RUNS_DIR) ? readdirSync(RUNS_DIR).sort().pop() : undefined);
     if (run === undefined) throw new Error('no runs');
     const bus = new EventBus(run, null);
-    for (const e of readEvents(join(RUNS_DIR, run))) bus.events.push(e);
+    const live = join(RUNS_DIR, run);
+    const archived = join(ARCHIVE_ROOT, run);
+    for (const e of readEvents(existsSync(live) ? live : archived)) bus.events.push(e);
     console.log(`replaying ${run}: ${bus.events.length} events`);
     await serve(bus);
     return;
@@ -136,7 +207,7 @@ async function main(): Promise<void> {
 
   if (cmd === 'evolve' || cmd === 'exam') {
     const mode = cmd;
-    const { runId, runDir, bus } = newRun(process.env['CREW_FAKE'] === '1' ? `${mode}-dry` : mode);
+    const { runId, runDir, bus } = newRun(process.env['CREW_FAKE'] === '1' ? `${mode}-dry` : mode, checkpoint === null ? undefined : resumeRun);
     await serve(bus);
     const generations = num(flags, 'generations', 3);
     const practice = num(flags, 'practice', 3);
@@ -146,7 +217,8 @@ async function main(): Promise<void> {
     const withExam = mode === 'exam' || flags.get('exam') === 'true';
     const resume = mode === 'evolve' && flags.get('resume') === 'true';
     const storedBase = memory.genomes().find((g) => g.status === 'baseline')?.genome;
-    const resumeFrom = resume ? (memory.champion() ?? storedBase ?? null) : null;
+    const fromCheckpoint = checkpoint === null ? undefined : memory.genomes().find((g) => g.genome.id === checkpoint?.incumbentId)?.genome;
+    const resumeFrom = resume ? (fromCheckpoint ?? memory.champion() ?? storedBase ?? null) : null;
     const startGen = resumeFrom?.generation ?? 0;
     // Practice of a resumed incumbent that has too few episodes: fresh seeds after its generation.
     const resumePractice = resume ? trainTasks(practice, 500 + 10 * startGen) : [];
@@ -166,7 +238,12 @@ async function main(): Promise<void> {
     const t0 = Date.now();
     let champion: Genome;
     if (mode === 'evolve') {
-      champion = await evolve({ generations, practice, validate, proposals, tier, concurrency, margin: num(flags, 'margin', Number(process.env['CREW_MARGIN'] ?? '0.03')), runId, runDir, bus, memory, game, tasksFor: (count, seedBase) => trainTasks(count, seedBase), ...(resumeFrom !== null ? { resumeFrom, resumePracticeSeed: 500 + 10 * startGen } : {}) }, baseline);
+      champion = await evolve({ generations, practice, validate, proposals, tier, concurrency, margin: num(flags, 'margin', Number(process.env['CREW_MARGIN'] ?? '0.03')), runId, runDir, bus, memory, game, tasksFor: (count, seedBase) => trainTasks(count, seedBase), ...(resumeFrom !== null ? { resumeFrom, resumePracticeSeed: 500 + 10 * startGen } : {}),
+        onGeneration: (gen, incumbent) => {
+          writeCheckpoint(runDir, { runId, flags: Object.fromEntries([...flags].filter(([k]) => !['resume', 'resume-run', 'generations'].includes(k))), env: crewEnv(), generation: gen, generationsTotal: startGen + generations, incumbentId: incumbent.id, taskSeeds: { practice: resume ? 500 + 10 * startGen : 0, validation: `1000*gen (+500 reserve)`, examSeedBase: 0 }, decisions: memory.decisions(), at: new Date().toISOString() });
+          bus.emit({ type: 'phase', phase: 'evaluate', generation: gen, detail: `checkpoint written (generation ${gen})` });
+          autoArchive(runDir);
+        } }, baseline);
       console.log(`evolution took ${((Date.now() - t0) / 60000).toFixed(1)} min; champion ${champion.id}`);
     } else {
       const wanted = flags.get('champion');
@@ -180,6 +257,7 @@ async function main(): Promise<void> {
       console.log(`report: ${join(runDir, 'report.md')}`);
     } else bus.emit({ type: 'phase', phase: 'done', generation: champion.generation, detail: `champion ${champion.id}` });
     printUsage();
+    autoArchive(runDir);
     console.log(`total ${((Date.now() - t0) / 60000).toFixed(1)} min. Events stay served; Ctrl-C to quit.`);
     await closeGames();
     if (flags.get('exit') === 'true') process.exit(0);

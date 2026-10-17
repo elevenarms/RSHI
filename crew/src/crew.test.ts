@@ -122,3 +122,26 @@ describe('rate limiter', () => {
     expect(ok.perTask).toHaveLength(3);
   });
 });
+
+describe('call log and archive', () => {
+  it('rebuilds loader requests from keep + tail, and finds secrets', async () => {
+    const { mkdtempSync, readFileSync } = await import('node:fs');
+    const { setCallLog, logCall, reconstructRequests } = await import('./calllog.ts');
+    const { scanForSecrets } = await import('./archive.ts');
+    const dir = mkdtempSync(join(tmpdir(), 'calls-'));
+    const file = join(dir, 'calls.jsonl');
+    setCallLog(file);
+    const sys = { role: 'system', content: 'SYS' };
+    const m1 = [sys, { role: 'user', content: 'a' }];
+    const m2 = [...m1, { role: 'assistant', content: 'b' }, { role: 'user', content: 'c' }];
+    const m3 = [sys, { role: 'user', content: 'folded' }, { role: 'user', content: 'd' }];
+    const base = { role: 'loader', model: 'm', episodeKey: 'e', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), ms: 1, attempts: 1, throttled: 0, reply: { choices: [{ message: { content: 'x' } }] } };
+    for (const messages of [m1, m2, m3]) logCall({ ...base, body: { model: 'm', messages } });
+    logCall({ ...base, role: 'critic', episodeKey: undefined as unknown as string, body: { model: 'm', messages: m1 } });
+    setCallLog(null);
+    const rebuilt = reconstructRequests(readFileSync(file, 'utf8'));
+    expect(rebuilt.map((r) => r.messages)).toEqual([m1, m2, m3, m1]);
+    expect(() => scanForSecrets('{"authorization": "Bearer x"}', 'f')).toThrow();
+    expect(() => scanForSecrets('{"auth_header": "none"}', 'f')).not.toThrow();
+  });
+});

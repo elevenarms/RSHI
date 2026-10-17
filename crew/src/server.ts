@@ -8,6 +8,7 @@ import { createServer, type Server } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import type { CrewEvent } from './contracts.ts';
 import type { EventBus } from './bus.ts';
+import { ARCHIVE_ROOT } from './archive.ts';
 
 const TYPES: { [ext: string]: string } = {
   '.html': 'text/html; charset=utf-8',
@@ -55,12 +56,14 @@ export function startCrewServer(o: CrewServerOptions): Promise<Server> {
       return;
     }
     if (url.pathname === '/api/runs') {
-      const runs = existsSync(o.runsDir)
-        ? readdirSync(o.runsDir)
-            .filter((d) => existsSync(join(o.runsDir, d, 'events.jsonl')))
-            .map((d) => ({ runId: d, updatedAt: statSync(join(o.runsDir, d, 'events.jsonl')).mtime.toISOString() }))
-            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-        : [];
+      const list = (dir: string, archived: boolean) =>
+        existsSync(dir)
+          ? readdirSync(dir)
+              .filter((d) => !d.startsWith('.') && (existsSync(join(dir, d, 'events.jsonl')) || existsSync(join(dir, d, 'events.jsonl.gz')) || existsSync(join(dir, d, 'manifest.json'))))
+              .map((d) => ({ runId: d, archived, updatedAt: statSync(join(dir, d)).mtime.toISOString() }))
+          : [];
+      const live = list(o.runsDir, false);
+      const runs = [...live, ...list(ARCHIVE_ROOT, true).filter((r) => !live.some((l) => l.runId === r.runId))].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ current: o.bus.runId, runs }));
       return;

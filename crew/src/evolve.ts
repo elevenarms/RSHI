@@ -34,6 +34,8 @@ export interface EvolveOptions {
   readonly resumeFrom?: Genome;
   /** Seed base of the practice a resumed incumbent still lacks. */
   readonly resumePracticeSeed?: number;
+  /** Called at the end of every generation (checkpoint, archive). */
+  readonly onGeneration?: (generation: number, incumbent: Genome) => void;
 }
 
 export const MODELS = (loader: string): { [r in Role]?: string } => ({ loader, planner: modelFor('planner'), critic: modelFor('critic'), coach: modelFor('coach'), librarian: modelFor('librarian'), gatekeeper: 'statistics (local)' });
@@ -151,6 +153,7 @@ export async function evolve(o: EvolveOptions, baseline: Genome): Promise<Genome
       history = of(best.genome.id);
     } else history = incumbentRuns;
     bus.emit({ type: 'phase', phase: 'evaluate', generation: gen, detail: `incumbent after generation ${gen}: ${incumbent.id}` });
+    o.onGeneration?.(gen, incumbent);
   }
   memory.saveGenome(incumbent, 'champion');
   bus.emit({ type: 'genome', genome: incumbent, status: 'champion' });

@@ -22,6 +22,7 @@ import { stanceOf } from './stance.ts';
 import { taskCard } from './tasks.ts';
 import { makePlan } from './team/planner.ts';
 import { librarianBrief } from './team/librarian.ts';
+import { endEpisodeLog } from './calllog.ts';
 
 export type Tier = 'fast' | 'official';
 
@@ -302,6 +303,7 @@ export async function runTask(o: RunTaskOptions): Promise<EpisodeSummary> {
   if (trace.finalImages !== undefined && trace.finalImages.length > 0) finalImages.set(episodeKey, trace.finalImages);
   bus?.emit({ type: 'agent_status', role: 'loader', status: 'done', label: `${task.title}: ${(summary.share * 100).toFixed(0)}%`, episodeKey });
   if (washSaid) shard.washing = Math.max(0, shard.washing - 1);
+  endEpisodeLog(episodeKey);
   o.game.release(shard);
   bus?.emit({ type: 'episode_finished', summary });
   try {

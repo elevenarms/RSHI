@@ -3,7 +3,8 @@
  * `.crew/runs/<runId>/events.jsonl` and handed to the listeners (the SSE server).
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync } from 'node:fs';
+import { readJsonlAnywhere } from './archive.ts';
 import { join } from 'node:path';
 import type { CrewEvent, CrewEventInput } from './contracts.ts';
 
@@ -50,18 +51,13 @@ export class EventBus {
 
 /** The events of a past run. */
 export function readEvents(runDir: string): CrewEvent[] {
-  const file = join(runDir, 'events.jsonl');
-  if (!existsSync(file)) return [];
-  return readFileSync(file, 'utf8')
-    .split('\n')
-    .filter((l) => l.trim() !== '')
-    .flatMap((l) => {
+  return readJsonlAnywhere(runDir, 'events.jsonl').flatMap((l) => {
       try {
-        return [JSON.parse(l) as CrewEvent];
-      } catch {
-        return [];
-      }
-    });
+      return [JSON.parse(l) as CrewEvent];
+    } catch {
+      return [];
+    }
+  });
 }
 
 /** A short line for the terminal. */
