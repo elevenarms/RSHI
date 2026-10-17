@@ -43,6 +43,25 @@ measured, paired test. Then we caught it learning superstitions, and measured wh
    washes) before it enters the playbook, i.e. falsify the lesson, not just score the genome.
    Deterministic simulators make (c) possible: a learned rule can be tested directly.
 
+## Next step: fine-tune the noisy loader (proposed, not a result)
+
+- The scaffold can only steer a noisy policy; the noise itself lives in the weights. The next
+  recursion is to distil the team's experience into the loader: supervised fine-tuning (LoRA) of
+  the weak loader on the team's best trajectories, i.e. the episodes that scored well under accepted
+  genomes, taken verbatim from the token-level call logs (calls.jsonl already records every
+  request and response in chat format).
+- Crusoe Serverless Fine-Tuning supports `nvidia/nemotron-3.5-lightning-30b-a3b` (LoRA SFT from a
+  JSONL of chat conversations; checkpoints deploy via Self-Serve Deployments). Our first weak
+  loader was exactly Lightning, so a fine-tuned Lightning on a dedicated Self-Serve Deployment
+  would also escape the shared-endpoint throttling (about 5 calls/min) that sidelined it.
+  Super-VL is not on the fine-tuning list.
+- Expected effects, to be tested with the same replication protocol: higher mean, and above all
+  LOWER variance between repeats, so that the Gatekeeper's paired test can resolve real gains and
+  stop accepting superstitions. Then the loop closes: the scaffold discovers, the Gatekeeper
+  verifies (now with enough power), and fine-tuning consolidates.
+- Wording: always "we propose" / "next", never "we fine-tuned". If the SFT dataset export exists
+  (docs/crew/insights/sft/), cite its size (examples, episodes, mean score).
+
 ## Wording
 
 - Headline options: "SparkleTeam learned to load a dishwasher, and learned a superstition."
