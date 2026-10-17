@@ -50,7 +50,7 @@ From `docs/crew/launch/video`:
 #    against a running server: ... shots/script.json --server http://127.0.0.1:8899 --no-build
 
 # 2. Voice-over (or record your own, see below).
-.venv/bin/python scripts/make_vo.py --voice bm_george --speed 1.08 --pause-scale 0.75
+.venv/bin/python scripts/make_vo.py --voice bm_george --speed 1.12 --pause-scale 0.65
 
 # 3. Music bed (optional; compose works without it, or pass --no-music).
 .venv/bin/python scripts/make_music.py --seconds 240
@@ -68,6 +68,8 @@ scripts/build.sh --scene Exam   # render one scene only (renders/manim/Exam.mp4)
 - A scene lasts max(its clips, its VO + a breath of 0.25 s). When the VO is longer, the scene's
   stretch clip (`"stretch": true`, else its last clip) holds its last frame: visuals stretch,
   the voice is never sped up. So end every Manim scene on a clean, holdable frame.
+- When a scene's visuals are longer than its VO, they play faster (at most `max_speed`, 1.25×)
+  so the cut follows the voice.
 - A missing VO file means silence for the scene's natural length.
 - Transitions per clip: `"in": "dip"` (8-frame dip to white), `"in": {"xfade": 0.5}`, or a cut.
 - The music bed is mixed at `gain_db` and ducked under the VO with a sidechain compressor.

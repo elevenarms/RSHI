@@ -93,10 +93,10 @@ def overlay_png(path: Path, tag: str | None = None, caption: str | None = None, 
         for i, lab in enumerate(labels):
             cx = W * (2 * i + 1) / (2 * n)
             tw = d.textlength(lab, font=f)
-            d.text((cx - tw / 2, 56), lab, font=f, fill=(0, 0, 0, 255))
+            d.text((cx - tw / 2, H - 150), lab, font=f, fill=(0, 0, 0, 255))
         for i in range(1, n):
             x = W * i / n
-            d.line([(x, 40), (x, H - 40)], fill=(0, 0, 0, 255), width=1)
+            d.line([(x, 120), (x, H - 60)], fill=(0, 0, 0, 255), width=1)
     img.save(path)
     return path
 
@@ -145,8 +145,11 @@ def natural_length(clip: dict) -> float:
     return n
 
 
-def render_segment(clip: dict, length: float, natural: float, out: Path, tmp: Path, plate: str) -> None:
+def render_segment(clip: dict, length: float, natural: float, out: Path, tmp: Path, plate: str, speed: float = 1.0) -> None:
+    """`natural` is the clip's own length; `speed` > 1 plays it faster (natural / speed seconds)."""
     t = clip["type"]
+    if t in ("still", "slot"):
+        natural, speed = natural / speed, 1.0
     inputs: list[str] = []
     pre = ""
     if t == "manim" or t == "video":
@@ -156,6 +159,7 @@ def render_segment(clip: dict, length: float, natural: float, out: Path, tmp: Pa
         pre = (
             f"[0:v]fps={FPS},scale={W}:{H}:force_original_aspect_ratio=decrease,"
             f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color={plate},setsar=1,trim=duration={natural:.4f},setpts=PTS-STARTPTS"
+            + (f",setpts=PTS/{speed:.5f},fps={FPS}" if speed != 1.0 else "")
         )
     elif t == "hstack":
         a, b = clip["files"]
@@ -164,6 +168,7 @@ def render_segment(clip: dict, length: float, natural: float, out: Path, tmp: Pa
             f"[0:v]fps={FPS},scale={W // 2}:{H}:force_original_aspect_ratio=decrease,pad={W // 2}:{H}:(ow-iw)/2:(oh-ih)/2:color={plate}[l];"
             f"[1:v]fps={FPS},scale={W // 2}:{H}:force_original_aspect_ratio=decrease,pad={W // 2}:{H}:(ow-iw)/2:(oh-ih)/2:color={plate}[r];"
             f"[l][r]hstack,setsar=1,trim=duration={natural:.4f},setpts=PTS-STARTPTS"
+            + (f",setpts=PTS/{speed:.5f},fps={FPS}" if speed != 1.0 else "")
         )
     elif t == "still":
         framed = framed_still(VIDEO / clip["file"], tmp / (out.stem + "_still.png"), clip.get("frame"))
@@ -186,6 +191,7 @@ def render_segment(clip: dict, length: float, natural: float, out: Path, tmp: Pa
         card.save(p)
         inputs = ["-loop", "1", "-framerate", str(FPS), "-t", f"{natural:.4f}", "-i", str(p)]
         pre = "[0:v]setsar=1"
+    natural = natural / speed
     hold = max(length - natural, 0)
     chain = pre
     if hold > 1e-3:
@@ -258,7 +264,15 @@ def main() -> None:
         nat_total = sum(naturals) - sum(xf[1:])
         vo = VIDEO / scene["vo"] if scene.get("vo") else None
         vo_len = duration(vo) if vo and vo.exists() else 0.0
-        target = max(nat_total, vo_len + float(scene.get("breath", 0.25)) + float(scene.get("vo_offset", 0))) if vo_len else nat_total
+        need = vo_len + float(scene.get("breath", 0.25)) + float(scene.get("vo_offset", 0))
+        # Visuals longer than the VO play faster (at most MAX_SPEED×) so the cut follows the voice.
+        speed = 1.0
+        if vo_len and nat_total > need and scene.get("fit", True):
+            speed = min(nat_total / need, float(tl.get("max_speed", 1.25)))
+        own = naturals
+        naturals = [n / speed for n in naturals]
+        nat_total = sum(naturals) - sum(xf[1:])
+        target = max(nat_total, need) if vo_len else nat_total
         extra = target - nat_total
         stretch = next((i for i, c in enumerate(clips) if c.get("stretch")), len(clips) - 1)
         scene_start = t - (xf[0] if segs else 0.0)
@@ -274,13 +288,13 @@ def main() -> None:
                 nxt = nxt_scene["clips"][0] if nxt_scene else None
             c["_dip_out"] = bool(nxt and nxt.get("in") == "dip")
             seg = tmp / f"{scene['id']}_{i:02d}.mp4"
-            render_segment(c, length, naturals[i], seg, tmp, plate)
+            render_segment(c, length, own[i], seg, tmp, plate, speed)
             x = xf[i] if segs else 0.0
             start = t - x
             edl["clips"].append({"scene": scene["id"], "clip": c.get("class") or c.get("file") or c.get("files") or c.get("label"), "start": round(start, 3), "length": round(length, 3)})
             segs.append((seg, length, x))
             t = start + length
-            print(f"  {scene['id']} clip {i}: {edl['clips'][-1]['clip']}  {length:.2f}s (natural {naturals[i]:.2f})")
+            print(f"  {scene['id']} clip {i}: {edl['clips'][-1]['clip']}  {length:.2f}s (natural {own[i]:.2f}, speed {speed:.2f})")
     total = t
     (out.parent / "edl.json").write_text(json.dumps(edl, indent=2))
 
@@ -300,7 +314,8 @@ def main() -> None:
             fc.append(f"{acc}[n{k}]concat=n=2:v=1:a=0,settb=AVTB,fps={FPS}[x{k}]")
             acc_len += length
         acc = f"[x{k}]"
-    vlabel = acc
+    fc.append(f"{acc}tpad=stop_mode=clone:stop_duration=1[vfinal]")
+    vlabel = "[vfinal]"
 
     # Audio: VO placed at its scene's start, music looped and ducked under it.
     n_v = len(segs)

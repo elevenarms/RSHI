@@ -41,6 +41,7 @@
  *                 "pan": [right, up] metres, a constant shift of the view in the image plane },
  *                 eased in-out over the shot
  *   items         turntable only: [{ "id": item id, "seconds": s }]
+ *   zoom          turntable only: camera distance factor (>1 = further; for tall items)
  *   water         "demo": the cosmetic water plays without a wash (watch, step mode)
  *   until_done    realtime watch with a wash: stop when the report is in (max `seconds`)
  *   hud           false (default) hides the page's small display
@@ -95,6 +96,7 @@ interface Shot {
   replay_during?: { from: number; count: number; every: number; start?: number };
   camera?: { az?: [number, number]; el?: [number, number]; zoom?: [number, number]; pan?: [number, number] };
   items?: { id: string; seconds: number }[];
+  zoom?: number;
   water?: 'demo';
   until_done?: boolean;
   hud?: boolean;
@@ -359,6 +361,11 @@ async function capture(browser: Browser, shot: Shot, defaultFps: number): Promis
       if (step) await page.evaluate(`window.__step(${now - last})`);
       last = now;
     }
+  }
+  if (shot.view === 'turntable' && shot.zoom !== undefined) {
+    // Camera distance factor of the turntable (display only): >1 shows more of a tall item.
+    await page.evaluate(`(() => { const t = window.spotless.turntable; const u = t.update.bind(t);
+      t.update = function (dt, aspect) { const d = this.distance; this.distance = d * ${shot.zoom}; u(dt, aspect); this.distance = d; }; })()`);
   }
   if (shot.view === 'watch') {
     if (!(await page.evaluate<boolean>(ORBIT))) throw new Error('watch camera not found in the page');
