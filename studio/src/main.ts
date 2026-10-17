@@ -295,7 +295,8 @@ function renderLive(s: StudioState): void {
       c.ov.innerHTML = overlay(e);
     }
   }
-  const idle = stage.querySelector('.idle, .exam-mini');
+  let idle = stage.querySelector('.idle, .exam-mini');
+  if (idle && s.exam && idle.classList.contains('idle')) { idle.remove(); idle = null; }
   if (live.length === 0) {
     if (!idle) {
       stage.insertAdjacentHTML('beforeend', s.exam ? examMini(s) : `<div class="idle"><div class="ring"></div>awaiting the next episode</div>`);

@@ -247,7 +247,7 @@ export function fakeRun(opts: FakeRunOptions = {}): CrewEvent[] {
         turn(0.6 * pace, `Collision. Shifting ${itemId.replace(/_/g, ' ')} one slot to the right.`, ['place']);
       }
       tool(0.35, 'place', { item_id: itemId, rack, stance, slot: 1 + Math.floor(r * 8) }, true, `${itemId} → ${rack} · ${stance} · stable`);
-      const clean = right ? rand() < 0.92 : rand() < 0.3;
+      const clean = right ? rand() < 0.92 : rand() < 0.12;
       outcomes.push({
         itemId,
         kind,
@@ -501,7 +501,7 @@ export function fakeRun(opts: FakeRunOptions = {}): CrewEvent[] {
   clock += 1.5;
   emit(clock, { type: 'phase', phase: 'exam', generation: 2, detail: `Exam: ${g0.id} vs ${incumbent.id} on ${TEST.length} held-out levels` });
   log(clock, 'exam: held-out tasks are played now for the first time; nothing is written to memory');
-  const exB = TEST.map((task, i) => episode(clock + i * 2, task, g0, 'exam-baseline', 0.45 + i * 0.05));
+  const exB = TEST.map((task, i) => episode(clock + i * 2, task, g0, 'exam-baseline', 0.4 + i * 0.05));
   const exC = TEST.map((task, i) => episode(clock + 1 + i * 2, task, incumbent, 'exam-champion', 0.84 + i * 0.03, { planner: incumbent.team.usePlanner }));
   clock = Math.max(...exB.map((r) => r.end), ...exC.map((r) => r.end)) + 1.5;
   const per = (rs: { summary: EpisodeSummary }[]) => rs.map((r) => ({ taskId: r.summary.taskId, share: r.summary.share, points: r.summary.points, pointsAvailable: r.summary.pointsAvailable }));
