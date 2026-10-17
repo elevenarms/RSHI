@@ -4,8 +4,8 @@ This is the `rshi` branch of [elevenarms/DishwasherBench](https://github.com/ele
 a fork of [composo-ai/DishwasherBench](https://github.com/composo-ai/DishwasherBench) (MIT, by Composo).
 Everything on this branch is upstream's work except the commits after upstream commit
 `99b974a` ("Merge pull request #68 from composo-ai/fit-both-washes"), which were made during the
-hackathon by the RSHI team. It is used as a git submodule by
-[elevenarms/RSHI](https://github.com/elevenarms/RSHI).
+hackathon by the SPARKLETEAM team. It is used as a git submodule by
+[elevenarms/RSHI](https://github.com/elevenarms/RSHI) (SPARKLETEAM).
 
 Full diff: https://github.com/elevenarms/DishwasherBench/compare/main...rshi
 

@@ -1,14 +1,15 @@
-# RSHI: a self-improving agent team that learns to load a dishwasher
+# SPARKLETEAM: a self-improving agent team that learns to load a dishwasher
 
-RSHI is a team of agents (on Crusoe Managed Inference) that plays Spotless, the dishwasher-loading
+SPARKLETEAM (repository `elevenarms/RSHI`; paper: *Towards Recursive Self Home Improvement*) is a team of agents (on Crusoe Managed Inference) that plays Spotless, the dishwasher-loading
 game of [DishwasherBench](https://github.com/composo-ai/DishwasherBench), learns from its own
 history and keeps only the changes that measurably help, plus a live visualizer of that loop.
+Final run: held-out exam 46.0% (baseline) -> 63.7% (champion), +17.8 pp; archived in [`crew/runs/`](crew/runs).
 
 ## What is original hackathon work and what is not
 
 | Path | Whose | What |
 |---|---|---|
-| [`crew/`](crew) | **Ours** (hackathon) | The self-improving team engine: Crusoe client, genome, loader policy, coach / planner / critic / librarian, gatekeeper, evolve, exam, memory, SSE server, CLI |
+| [`crew/`](crew) | **Ours** (hackathon) | The SPARKLETEAM engine: Crusoe client, genome, loader policy, coach / planner / critic / librarian, gatekeeper, evolve, exam, memory, SSE server, CLI; run archives in `crew/runs/` |
 | [`studio/`](studio) | **Ours** (hackathon) | The live visualizer of the crew |
 | [`docs/`](docs) | **Ours** (hackathon) | Architecture, submission write-up, Crusoe skill reference |
 | [`scripts/`](scripts), [`fork/`](fork), root files | **Ours** (hackathon) | Workspace, provenance and sync tooling |
