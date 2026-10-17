@@ -163,8 +163,20 @@ export class Inspector {
       </div>`;
   }
 
+  private still: string | null = null;
+
+  /** Replays: the game servers are gone, so the turntable shows a still picture. */
+  useStill(url: string): void {
+    this.still = url;
+    this.frame.style.display = 'none';
+    const img = document.createElement('img');
+    img.className = 'still';
+    img.src = url;
+    this.box.prepend(img);
+  }
+
   private setFrame(e: EpisodeObjects, itemId: string): void {
-    if (!e.watchUrl || !e.sessionId) return;
+    if (this.still || !e.watchUrl || !e.sessionId) return;
     let base: string;
     try {
       base = new URL(e.watchUrl, location.href).href.split('#')[0]!;

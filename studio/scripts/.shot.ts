@@ -1,0 +1,11 @@
+import { launch } from 'puppeteer-core';
+const [out, size, url, wait] = process.argv.slice(2);
+const [w, h] = size!.split('x').map(Number);
+const b = await launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: [`--window-size=${w},${h}`, '--mute-audio'], defaultViewport: { width: w!, height: h! } });
+const p = await b.newPage();
+await p.goto(url!, { waitUntil: 'domcontentloaded' });
+await new Promise((r) => setTimeout(r, Number(wait ?? 9000)));
+await p.keyboard.press('Escape');
+await new Promise((r) => setTimeout(r, 800));
+await p.screenshot({ path: out as `${string}.png` });
+await b.close();

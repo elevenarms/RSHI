@@ -39,6 +39,8 @@ interface Lane {
 
 export interface TokenPanel {
   push(e: StreamEv): void;
+  /** Tokens/second over the last 3 s (`now`), whether anything streamed in that window, and the last non-zero rate. */
+  rate(): { now: number; live: boolean; last: number };
 }
 
 export function tokenPanel(root: HTMLElement, meter: HTMLElement, taskOf: (episodeKey: string) => string | undefined = () => undefined): TokenPanel {
@@ -55,6 +57,8 @@ export function tokenPanel(root: HTMLElement, meter: HTMLElement, taskOf: (episo
   // Rate window: [time, model, tokens].
   const window: [number, string, number][] = [];
   let totalTok = 0;
+  let curRate = 0;
+  let lastRate = 0;
   let layoutN = -1;
 
   function lane(e: StreamEv): Lane {
@@ -158,6 +162,8 @@ export function tokenPanel(root: HTMLElement, meter: HTMLElement, taskOf: (episo
         by.set(m, (by.get(m) ?? 0) + t);
         sum += t;
       }
+      curRate = sum / 3;
+      if (curRate > 0) lastRate = curRate;
       meter.innerHTML =
         [...by]
           .sort((a, b) => b[1] - a[1])
@@ -167,5 +173,5 @@ export function tokenPanel(root: HTMLElement, meter: HTMLElement, taskOf: (episo
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  return { push };
+  return { push, rate: () => ({ now: curRate, live: curRate > 0, last: lastRate }) };
 }

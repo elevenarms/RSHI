@@ -25,6 +25,7 @@ let lastExamSeq = 0;
 
 const tokens = tokenPanel($('#waterfall'), $('#meter'), (key) => state.episodes[key]?.taskTitle);
 const inspector = new Inspector($<HTMLIFrameElement>('#tt'), $('#objcard'), $('.turntable'));
+if (new URLSearchParams(location.search).has('replay')) inspector.useStill('stills/turntable.jpg');
 
 const source = startSource(
   (e) => apply(e, true),
@@ -80,12 +81,24 @@ function renderHeader(s: StudioState): void {
     ['cached', fmtN(t.cached)],
     ['tool calls', fmtN(t.toolCalls)],
     ['champion', champ ? champ.split('-')[0]! : '—'],
+    ['tok/s', tokRate()],
   ]
-    .map(([k, v]) => `<div class="counter"><div class="v">${v}</div><div class="k">${k}</div></div>`)
+    .map(([k, v]) => `<div class="counter ${k === 'tok/s' ? `rate ${tokens.rate().live ? 'live' : 'idle'}` : ''}"><div class="v">${v}</div><div class="k">${k}</div></div>`)
     .join('');
 }
 
 const STEPS = ['practice', 'review', 'propose', 'evaluate'] as const;
+/** Live tokens/second across all streams; when idle, the last value (dimmed) or the run's average output rate. */
+function tokRate(): string {
+  const r = tokens.rate();
+  if (r.live) return String(Math.round(r.now));
+  if (r.last > 0) return String(Math.round(r.last));
+  const fin = state.episodeOrder.map((k) => state.episodes[k]?.summary).filter((x) => !!x);
+  const outTok = fin.reduce((a, x) => a + (x!.tokensOut || 0), 0);
+  const secs = fin.reduce((a, x) => a + (x!.loadingS || 0), 0);
+  return secs > 0 ? String(Math.round(outTok / secs)) : '—';
+}
+
 function renderPhases(s: StudioState): void {
   const gens = Math.max(s.run?.generations ?? 2, s.phase?.generation ?? 0);
   const seen = new Set(s.phaseHistory.map((p) => `${p.phase}:${p.phase === 'baseline' || p.phase === 'exam' || p.phase === 'done' ? 0 : p.generation}`));
@@ -199,7 +212,7 @@ function renderGraph(s: StudioState): void {
     const t = g.querySelectorAll('text');
     t[1]!.textContent = a.status.toUpperCase();
     const mn = modelName(s.run?.models[r]);
-    t[2]!.textContent = mn.length > 19 ? `${mn.slice(0, 18)}…` : mn;
+    t[2]!.textContent = mn.length > 18 ? `${mn.slice(0, 17)}…` : mn;
     t[3]!.textContent = a.label.length > 21 ? `${a.label.slice(0, 20)}…` : a.label;
   }
 }
@@ -285,7 +298,7 @@ let userFocus: string | null = null;
 const LINGER_MS = 9000;
 
 function renderLive(s: StudioState): void {
-  const live = liveEpisodes(s, source.now(), LINGER_MS * Math.max(1, source.speed));
+  let live = liveEpisodes(s, source.now(), LINGER_MS * Math.max(1, source.speed));
   const keys = new Set(live.map((e) => e.key));
   for (const [k, c] of cards) if (!keys.has(k)) { c.el.remove(); cards.delete(k); }
   if (userFocus && !keys.has(userFocus)) userFocus = null;
@@ -293,7 +306,11 @@ function renderLive(s: StudioState): void {
   focusKey = userFocus ?? live.find((e) => !e.finishedAt)?.key ?? live[0]?.key ?? null;
   const W = stage.clientWidth;
   const H = stage.clientHeight;
-  const others = live.filter((e) => e.key !== focusKey);
+  // At most three other episodes as thumbnails, so each stays legible.
+  const others = live.filter((e) => e.key !== focusKey).slice(0, 3);
+  live = live.filter((e) => e.key === focusKey || others.includes(e));
+  const shown = new Set(live.map((e) => e.key));
+  for (const [k, c] of cards) if (!shown.has(k)) { c.el.remove(); cards.delete(k); }
   // The other episodes stack in a column on the right, so the hero view keeps a less extreme aspect.
   const gap = 6;
   const thumbW = others.length ? Math.round(Math.min(W * 0.24, 260)) : 0;
@@ -307,11 +324,18 @@ function renderLive(s: StudioState): void {
       el.className = 'card';
       const frame = document.createElement('iframe');
       // `&nohud`: the game page hides its own heading (the card's strip shows the title).
-      frame.src = /[#&]nohud\b/.test(e.watchUrl) ? e.watchUrl : `${e.watchUrl}&nohud`;
+      // A replay outlives its game servers: show a still of the washer instead of a dead page.
+      if (source.mode === 'replay') {
+        frame.style.display = 'none';
+        const img = document.createElement('img');
+        img.className = 'still';
+        img.src = 'stills/site.jpg';
+        el.append(img);
+      } else frame.src = /[#&]nohud\b/.test(e.watchUrl) ? e.watchUrl : `${e.watchUrl}&nohud`;
       frame.setAttribute('allow', 'autoplay');
       const ov = document.createElement('div');
       ov.className = 'ov';
-      el.classList.add('loading');
+      if (source.mode !== 'replay') el.classList.add('loading');
       frame.addEventListener('load', () => setTimeout(() => el.classList.remove('loading'), 2500));
       el.append(frame, ov);
       el.onclick = () => { userFocus = e.key; dirty = true; };
@@ -348,16 +372,15 @@ function renderLive(s: StudioState): void {
 }
 
 function overlay(e: EpisodeView): string {
-  const tools = e.stream.filter((x) => x.type === 'tool').slice(-4);
+  // Nothing is drawn over the washer: state and score live in the title strip above it.
   const sum = e.summary;
-  const sc = sum ? (sum.share >= 0.75 ? 'var(--good)' : sum.share >= 0.55 ? 'var(--ink)' : 'var(--bad)') : '';
-  return `<div class="ov-top"><span class="badge b-${e.purpose}">${e.purpose}</span><span class="task">${esc(e.taskTitle)}</span>
-      <span class="ov-meta">genome <b>${esc(e.genomeId)}</b> · ${e.itemCount} items · ${e.pointsAvailable} pts</span></div>
-    <div class="ticker">${tools
-      .map((t) => (t.type === 'tool' ? `<div class="tick ${t.ok ? '' : 'bad'}"><b>${esc(t.name)}</b> ${esc(t.summary)}</div>` : ''))
-      .join('')}</div>
-    ${e.wash === 'started' && !sum ? '<div class="washing">◌ WASHING</div>' : ''}
-    ${sum ? `<div class="stamp" style="--sc:${sc}"><div class="p">${sum.points}<small>/${sum.pointsAvailable}</small></div><div class="c">${sum.itemsClean}/${sum.itemsOffered} clean · ${pct(sum.share)}</div></div>` : ''}`;
+  const sc = sum ? (sum.share >= 0.75 ? 'good' : sum.share >= 0.55 ? 'mid' : 'bad') : '';
+  const state = sum
+    ? `<span class="score ${sc}"><b>${sum.points}/${sum.pointsAvailable}</b> · ${sum.itemsClean}/${sum.itemsOffered} clean</span>`
+    : e.wash === 'started'
+      ? '<span class="score wash">WASHING</span>'
+      : `<span class="ov-meta">${e.itemCount} items · ${e.pointsAvailable} pts</span>`;
+  return `<div class="ov-top"><span class="badge b-${e.purpose}">${e.purpose}</span><span class="task">${esc(e.taskTitle)}</span>${state}</div>`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -431,9 +454,9 @@ function renderEvolution(s: StudioState): void {
         <circle class="cand" cx="${x}" cy="${y}" r="11" fill="#fff" stroke="${col}"/>
         <text x="${x}" y="${y + 4.5}" text-anchor="middle" font-size="13" font-weight="800" fill="${col}">${p.accepted ? '✓' : '✕'}</text>
         <text class="delta-t" x="${x}" y="${up ? y - 18 : y + 28}" text-anchor="middle" fill="${col}">${p.delta >= 0 ? '+' : '−'}${Math.abs(p.delta * 100).toFixed(1)}</text>
-        <text class="cand-t" x="${Math.min(x, W - 140)}" y="${up ? y - 36 : y + 46}" text-anchor="middle">${esc(p.title.length > 30 ? `${p.title.slice(0, 29)}…` : p.title)}</text></g>`;
+        ${pts.length - 1 > 3 ? '' : `<text class="cand-t" x="${Math.min(x, W - 140)}" y="${up ? y - 36 : y + 46}" text-anchor="middle">${esc(p.title.length > 30 ? `${p.title.slice(0, 29)}…` : p.title)}</text>`}</g>`;
     }
-    h += `<text class="delta-t" x="${W - Rr}" y="${Y(last.champion) - 10}" text-anchor="end" fill="var(--ink)">${pct(last.champion)}</text>`;
+    if (pts.length <= 4) h += `<text class="delta-t" x="${W - Rr}" y="${Y(last.champion) - 10}" text-anchor="end" fill="var(--ink)">${pct(last.champion)}</text>`;
   } else h += `<text class="axis-t" x="${W / 2}" y="${H / 2}" text-anchor="middle">waiting for the baseline score…</text>`;
   $('#chart').innerHTML = h;
   // The payoff in big type: where the team started, where it is now.
@@ -570,7 +593,7 @@ function showExam(s: StudioState): void {
   if (!x) return;
   const el = $('#exam');
   const d = (x.champion.share - x.baseline.share) * 100;
-  el.innerHTML = `<canvas></canvas><div class="inner"><div class="kicker">SparkleTeam · the exam · ${x.champion.perTask.length} levels the team has never seen</div>
+  el.innerHTML = `<canvas></canvas><div class="inner"><div class="kicker">SparkleTeam · exam on held-out levels · ${x.champion.perTask.length} levels the team has never seen</div>
     <div class="big ${d < 0 ? 'neg' : ''}"><span id="exam-num">+0.0</span> pts</div>
     <div class="line">baseline <b>${esc(x.baseline.genomeId)}</b> ${pct(x.baseline.share)} &nbsp;→&nbsp; champion <b style="color:var(--good)">${esc(x.champion.genomeId)}</b> ${pct(x.champion.share)}</div>
     <div class="bars" style="--n:${x.champion.perTask.length}">${x.champion.perTask
