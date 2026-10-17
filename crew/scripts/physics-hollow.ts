@@ -146,8 +146,11 @@ function placingPolicy(task: (typeof tasks)[number]): Policy & { placed: { tries
   };
 }
 
+if (process.env['PHYS_KINDS'] !== undefined) { const keep = tasks.filter((t) => (process.env['PHYS_KINDS'] as string).split(',').includes(t.kind)); tasks.splice(0, tasks.length, ...keep); }
+if (process.env['PHYS_CONDITIONS'] !== undefined) { const keep = tasks.filter((t) => (process.env['PHYS_CONDITIONS'] as string).split(',').includes(t.condition.name)); tasks.splice(0, tasks.length, ...keep); }
 if (process.env['PHYS_LIMIT'] !== undefined) tasks.splice(Number(process.env['PHYS_LIMIT']));
-const game = await gameFor('fast', tasks);
+const tier = (process.env['PHYS_TIER'] ?? 'fast') as 'fast' | 'official';
+const game = await gameFor(tier, tasks);
 const t0 = performance.now();
 let done = 0;
 const results = await pool(tasks, Number(process.env['CREW_CONCURRENCY'] ?? '4'), async (task) => {
