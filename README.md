@@ -1,9 +1,27 @@
-# SPARKLETEAM: a self-improving agent team that learns to load a dishwasher
+# SPARKLETEAM: Towards Recursive Self Home Improvement
+### (and the Superstitions It Learned on the Way)
 
-SPARKLETEAM (repository `elevenarms/RSHI`; paper: *Towards Recursive Self Home Improvement*) is a team of agents (on Crusoe Managed Inference) that plays Spotless, the dishwasher-loading
-game of [DishwasherBench](https://github.com/composo-ai/DishwasherBench), learns from its own
-history and keeps only the changes that measurably help, plus a live visualizer of that loop.
-Final run: held-out exam 46.0% (baseline) -> 63.7% (champion), +17.8 pp; archived in [`crew/runs/`](crew/runs).
+**[Project page](https://elevenarms.github.io/RSHI/) · [Paper (PDF)](docs/paper/main.pdf) · [Slides](docs/launch/deck/SparkleTeam-deck.pdf) · [Video](https://elevenarms.github.io/RSHI/#teaser) · [Run logs](crew/runs)**
+
+Dave Rauchwerk ([@_elevenarms](https://x.com/_elevenarms)) and Claude (Anthropic) · built at the Cerebral Valley × Crusoe Recursive Agents Hackathon, 17 Oct 2026
+
+![The SparkleTeam Studio during a live run: five NVIDIA Nemotron models on Crusoe as a team graph, the weak loader at work in the physically simulated dishwasher, the dirty item in hand, score versus generation with accepted and rejected self-edits, and every token streaming.](studio/screenshots/sparkleteam-figure.png)
+<sub>The Studio, replaying the final run during the held-out exam (the washer and turntable panels show representative stills in replay).</sub>
+
+A team of five open NVIDIA Nemotron models on Crusoe Managed Inference plays the dishwasher-loading
+game of [DishwasherBench](https://github.com/composo-ai/DishwasherBench) (Composo's physically
+simulated Bosch machine, scored by which items come out clean), rewrites its own prompts, playbook,
+tools and team structure, and keeps an edit only if it wins a paired, measured test.
+
+- **It works end to end:** typed self-edits, a statistical Gatekeeper, three-layer memory, and every
+  token logged and replayable ([`crew/runs/`](crew/runs)).
+- **Finding 1:** a cup stood mouth up keeps half its grime. Mouth up: 0 of 11 came out clean.
+  Mouth down: 26 of 26 ([details](docs/insights/INSIGHTS.md)).
+- **It learned a superstition, and we caught it.** A first 4-drill exam showed +17.8 pp. A 12-drill
+  replication (23 pairs) showed −0.3 pp (95% CI −13 to +12): no effect. One accepted rule was real
+  physics; the other rested on one failure in two loads. The weak loader's own noise swamped the
+  Gatekeeper's margin. The paper gives the design rules that fix it, and fine-tuning as the next
+  recursion.
 
 ## What is original hackathon work and what is not
 
