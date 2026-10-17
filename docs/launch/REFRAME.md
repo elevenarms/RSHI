@@ -23,9 +23,17 @@ measured, paired test. Then we caught it learning superstitions, and measured wh
      validation drills each: +25.1 pp (rule R1.1, bowls) and +15.7 pp (rule R2.1/R2.2, glasses
      mouth down, cutlery upright).
    - A first 4-drill held-out exam showed 46.0% → 63.7% (+17.8 pp, 3/4 wins, sign test p ≈ 0.31).
-   - **It did not replicate.** 12 held-out drills × 2 repeats, 23 valid pairs: baseline 46.0%,
-     champion 45.7%, Δ −0.3 pp, bootstrap 95% CI −13 to +12, 12 wins / 9 losses / 2 ties,
-     sign test p = 0.66, Wilcoxon p = 0.77.
+   - **It did not replicate.** 12 held-out drills × 2 repeats, 24 valid pairs (FINAL): baseline
+     47.0%, champion 46.6%, Δ −0.5 pp, bootstrap 95% CI −13 to +11, 12 wins / 10 losses / 2 ties,
+     sign test p = 0.83, Wilcoxon p = 0.76. (An interim 23-pair cut gave −0.3 pp; superseded.)
+   - Ablation: no single rule carries a significant effect (all p ≥ 0.39); the best variant was the
+     champion WITHOUT R1.1 (0.552, +0.08 vs baseline, n.s.).
+   - Finding 1 at the official tier (spot check): mug and tumbler mouth up kept 90% / 89% of soil;
+     mouth down both clean, so the effect holds and is stronger at full fidelity.
+   - Transfer (n.s.): champion genome vs baseline on DeepSeek-V4-Flash +15 pp (8/3, p = 0.23),
+     gpt-oss-120b +8 pp (p = 0.75).
+   - Missed by the team: pots are hardest (mouth up kept 95–100% soil, held 2–7 L); bowls left out
+     21/21 times although every bowl kind washes clean mouth down.
    - **Why: the weak loader's sampling noise.** The same genome on the same drill differed by
      0.20 share on average between repeats (up to 0.80; one drill scored 0.000 and 0.803).
      With per-drill SD ≈ 0.3, 3–4 paired drills cannot resolve a 3 pp margin; even 23 pairs only
