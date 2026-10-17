@@ -128,7 +128,7 @@ const NEW_LESSON: Lesson = {
 
 function baseHeat(): Heat {
   const rows = ['plate', 'bowl', 'mug', 'glass', 'pot', 'cutlery'];
-  const cols = ['lower · upright', 'lower · mouth down', 'upper · mouth down', 'upper · on side', 'upper · mouth up', 'basket'];
+  const cols = ['lower\nupright', 'lower\nmouth down', 'upper\nmouth down', 'upper\non side', 'upper\nmouth up', 'cutlery\nbasket'];
   const cells: (number | null)[][] = [
     [0.94, null, null, null, null, null],
     [0.31, 0.82, 0.9, 0.44, 0.08, null],

@@ -68,7 +68,7 @@ export function mission(): View {
     root = stage;
     header = h('header', 'hud-top');
     header.innerHTML = `
-      <div class="brand"><div class="logo"><i></i><i></i><i></i></div><div><div class="title">CREW</div><div class="sub">self-improving agent team · Crusoe Managed Inference</div></div></div>
+      <div class="brand"><div class="logo"><i></i><i></i><i></i></div><div><div class="title">CREW</div><div class="sub">self-improving agent team</div></div></div>
       <div class="phases">${PHASES.map((p) => `<div class="ph" data-p="${p}">${p}</div>`).join('')}</div>
       <div class="counters">
         <div class="ctr"><small>generation</small><b data-k="gen">3</b></div>
