@@ -206,6 +206,7 @@ export function fakeRun(opts: FakeRunOptions = {}): CrewEvent[] {
       purpose,
       pointsAvailable,
       itemCount: items,
+      items: task.kinds.map((kind, i) => ({ itemId: `${kind}_${String(i + 1).padStart(2, '0')}`, kind, soils: SOILS[kind] ?? [], points: 10, label: kind.replace(/_/g, ' ') })),
     });
     status(t, 'loader', 'acting', `${task.title} · ${purpose}`, key);
     let seq = 0;

@@ -6,6 +6,7 @@ import { championId, evolution, initialState, lineage, liveEpisodes, reduce, ROL
 import { startSource } from './source.ts';
 import { tokenPanel } from './tokens.ts';
 import { modelName } from './models.ts';
+import { Inspector } from './inspector.ts';
 
 const $ = <T extends Element = HTMLElement>(sel: string): T => document.querySelector(sel) as T;
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -23,6 +24,7 @@ const pendingPackets: MessageView[] = [];
 let lastExamSeq = 0;
 
 const tokens = tokenPanel($('#waterfall'), $('#meter'));
+const inspector = new Inspector($<HTMLIFrameElement>('#tt'), $('#objcard'), $('.turntable'));
 
 const source = startSource(
   (e) => apply(e, true),
@@ -34,6 +36,7 @@ const source = startSource(
 );
 
 function apply(e: CrewEvent, animate: boolean): void {
+  inspector.onEvent(e);
   // Token streams go straight to the waterfall (many small events; the state fold ignores them).
   if (e.type === 'stream') {
     if (animate) tokens.push(e);
@@ -68,6 +71,7 @@ function renderHeader(s: StudioState): void {
   $('#inference').innerHTML = `<div class="crusoe">CRUSOE<small>MANAGED INFERENCE</small></div><div class="models">${[...byModel]
     .map(([m, rs]) => `<span>${rs.map((r) => `<i style="color:${COLOR[r]}">${r}</i>`).join('<i>·</i>')} <i>→</i> ${esc(modelName(m))}</span>`)
     .join('')}</div>`;
+  $('#casefile').textContent = s.runId ? `CASE FILE · RUN ${s.runId.toUpperCase()}` : 'CASE FILE · awaiting run';
   const t = s.tokens;
   const champ = championId(s);
   $('#counters').innerHTML = [
@@ -108,12 +112,30 @@ function renderPhases(s: StudioState): void {
 // team graph
 // ---------------------------------------------------------------------------------------------
 
-const CX = 240;
-const CY = 232;
-const R = 168;
-// Loader at 3 o'clock (next to the 3D view), the rest round the ring in the order work flows.
-const RING: Role[] = ['loader', 'librarian', 'critic', 'coach', 'gatekeeper', 'planner'];
-const POS = new Map<Role, { x: number; y: number }>(RING.map((r, i) => [r, { x: CX + R * Math.cos((i * Math.PI) / 3), y: CY + R * Math.sin((i * Math.PI) / 3) * 0.95 }]));
+// Link-analysis layout (viewBox 360×300): the work flows down the left, across, and up the right.
+const CX = 180;
+const CY = 150;
+const NW = 150;
+const NH = 56;
+const POS = new Map<Role, { x: number; y: number }>([
+  ['librarian', { x: 85, y: 38 }],
+  ['planner', { x: 85, y: 150 }],
+  ['loader', { x: 85, y: 262 }],
+  ['critic', { x: 275, y: 262 }],
+  ['coach', { x: 275, y: 150 }],
+  ['gatekeeper', { x: 275, y: 38 }],
+]);
+const RING: Role[] = ['librarian', 'planner', 'loader', 'critic', 'coach', 'gatekeeper'];
+/** The typed links of the flow (always drawn); other pairs light up only while a message travels. */
+const FLOW: [Role, Role, string][] = [
+  ['librarian', 'planner', 'BRIEF'],
+  ['planner', 'loader', 'PLAN'],
+  ['loader', 'critic', 'EPISODE'],
+  ['critic', 'coach', 'CRITIQUE'],
+  ['coach', 'gatekeeper', 'PROPOSAL'],
+  ['gatekeeper', 'planner', 'GENOME'],
+  ['critic', 'librarian', 'LESSON'],
+];
 const graph = $<SVGSVGElement>('#graph');
 const nodeEls = new Map<Role, SVGGElement>();
 const edgeEls = new Map<string, SVGPathElement>();
@@ -121,64 +143,50 @@ const edgeKey = (a: Role, b: Role): string => [a, b].sort().join('-');
 function curve(a: { x: number; y: number }, b: { x: number; y: number }): { c: { x: number; y: number }; d: string } {
   const mx = (a.x + b.x) / 2;
   const my = (a.y + b.y) / 2;
-  const c = { x: mx + (CX - mx) * 0.35, y: my + (CY - my) * 0.35 };
+  const c = { x: mx + (CX - mx) * 0.25, y: my + (CY - my) * 0.25 };
   return { c, d: `M${a.x},${a.y} Q${c.x},${c.y} ${b.x},${b.y}` };
 }
 
 function buildGraph(): void {
-  graph.innerHTML = `<defs>
-    <radialGradient id="coreGrad"><stop offset="0" stop-color="rgba(45,226,255,.25)"/><stop offset="1" stop-color="rgba(45,226,255,0)"/></radialGradient>
-    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  </defs>
-  <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#000" stroke-opacity=".18" stroke-dasharray="2 6"/>
-  <circle cx="${CX}" cy="${CY}" r="62" fill="#fff" stroke="#000" stroke-width="2"/>
-  <line x1="${CX + R + 40}" y1="${CY}" x2="500" y2="${CY}" stroke="#000" stroke-width="2" stroke-dasharray="4 4" opacity=".5"><animate attributeName="stroke-dashoffset" from="16" to="0" dur=".8s" repeatCount="indefinite"/></line>
-  <g id="edges"></g><g id="nodes"></g><g id="packets"></g>
-  <text id="core-gen" class="core-gen" x="${CX}" y="${CY + 8}" text-anchor="middle">G0</text>
-  <text id="core-sub" class="core-sub" x="${CX}" y="${CY + 32}" text-anchor="middle">waiting</text>`;
+  graph.innerHTML = `<g id="edges"></g><g id="elabels"></g><g id="packets"></g><g id="nodes"></g>`;
   const eg = graph.querySelector('#edges')!;
+  const lg = graph.querySelector('#elabels')!;
+  const flowKeys = new Map(FLOW.map(([a, b, l]) => [edgeKey(a, b), l]));
   for (let i = 0; i < RING.length; i++)
     for (let j = i + 1; j < RING.length; j++) {
       const a = RING[i]!;
       const b = RING[j]!;
       const p = document.createElementNS(SVG, 'path');
-      p.setAttribute('class', 'edge');
-      p.setAttribute('d', curve(POS.get(a)!, POS.get(b)!).d);
+      const k = edgeKey(a, b);
+      p.setAttribute('class', `edge ${flowKeys.has(k) ? 'flow' : ''}`);
+      const cv = curve(POS.get(a)!, POS.get(b)!);
+      p.setAttribute('d', cv.d);
       eg.appendChild(p);
-      edgeEls.set(edgeKey(a, b), p);
+      edgeEls.set(k, p);
+      const l = flowKeys.get(k);
+      if (l) {
+        const A = POS.get(a)!;
+        const B = POS.get(b)!;
+        const lx = 0.25 * A.x + 0.5 * cv.c.x + 0.25 * B.x;
+        // A horizontal link would hide its label between the boxes: put it under them.
+        const ly = A.y === B.y ? A.y + NH / 2 + 12 : 0.25 * A.y + 0.5 * cv.c.y + 0.25 * B.y;
+        lg.insertAdjacentHTML('beforeend', `<g class="elabel" data-k="${k}" transform="translate(${lx},${ly})"><rect x="${-l.length * 3.3 - 4}" y="-7" width="${l.length * 6.6 + 8}" height="14"/><text y="3.5" text-anchor="middle">${l}</text></g>`);
+      }
     }
   const ng = graph.querySelector('#nodes')!;
   for (const r of RING) {
     const { x, y } = POS.get(r)!;
     const g = document.createElementNS(SVG, 'g');
     g.setAttribute('class', 'node idle');
-    const below = y > CY + 10;
-    const ly = below ? 52 : -54;
-    const my = below ? y + 84 : y - 84;
-    g.innerHTML = `<circle class="halo" cx="${x}" cy="${y}" r="46" fill="${HEX[r]}" opacity="0"/>
-      <circle class="node-ring" cx="${x}" cy="${y}" r="34" stroke="${HEX[r]}"/>
-      <circle class="spinner" cx="${x}" cy="${y}" r="40" fill="none" stroke="${HEX[r]}" stroke-width="2" stroke-dasharray="20 230" stroke-linecap="round"/>
-      ${icon(r, x, y)}
-      <text class="node-name" x="${x}" y="${y + ly}" text-anchor="middle">${r}</text>
-      <text class="node-status" x="${x}" y="${y + ly + 15}" text-anchor="middle">idle</text>
-      <text class="node-label" x="${x}" y="${below ? y + 108 : y - 104}" text-anchor="middle"></text>
-      <rect class="model-chip" x="${x}" y="${my - 11}" width="0" height="19" data-cx="${x}"/>
-      <text class="node-model" x="${x}" y="${my + 3}" text-anchor="middle"></text>`;
+    g.style.setProperty('--rc', HEX[r]);
+    g.innerHTML = `<rect class="node-box" x="${x - NW / 2}" y="${y - NH / 2}" width="${NW}" height="${NH}"/>
+      <rect class="node-bar" x="${x - NW / 2}" y="${y - NH / 2}" width="5" height="${NH}" fill="${HEX[r]}"/>
+      <text class="node-name" x="${x - NW / 2 + 12}" y="${y - 10}">${r.toUpperCase()}</text>
+      <text class="node-status" x="${x + NW / 2 - 7}" y="${y - 10}" text-anchor="end">IDLE</text>
+      <text class="node-model" x="${x - NW / 2 + 12}" y="${y + 6}"></text>
+      <text class="node-label" x="${x - NW / 2 + 12}" y="${y + 20}"></text>`;
     ng.appendChild(g);
     nodeEls.set(r, g);
-  }
-}
-
-function icon(r: Role, x: number, y: number): string {
-  const c = HEX[r];
-  const s = `stroke="${c}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
-  switch (r) {
-    case 'planner': return `<g ${s}><path d="M${x - 12},${y + 10} L${x - 4},${y - 6} L${x + 4},${y + 4} L${x + 13},${y - 11}"/><circle cx="${x + 13}" cy="${y - 11}" r="2.5"/></g>`;
-    case 'loader': return `<g ${s}><rect x="${x - 13}" y="${y - 13}" width="26" height="26" rx="3"/><path d="M${x - 9},${y - 3} h18 M${x - 9},${y + 5} h18"/><circle cx="${x}" cy="${y - 8}" r="1.5"/></g>`;
-    case 'critic': return `<g ${s}><circle cx="${x - 3}" cy="${y - 3}" r="9"/><path d="M${x + 4},${y + 4} L${x + 13},${y + 13}"/></g>`;
-    case 'coach': return `<g ${s}><path d="M${x},${y - 14} L${x + 4},${y - 4} L${x + 14},${y - 3} L${x + 6},${y + 4} L${x + 9},${y + 14} L${x},${y + 8} L${x - 9},${y + 14} L${x - 6},${y + 4} L${x - 14},${y - 3} L${x - 4},${y - 4} Z"/></g>`;
-    case 'gatekeeper': return `<g ${s}><path d="M${x},${y - 14} L${x + 12},${y - 8} V${y + 2} C${x + 12},${y + 9} ${x + 6},${y + 13} ${x},${y + 15} C${x - 6},${y + 13} ${x - 12},${y + 9} ${x - 12},${y + 2} V${y - 8} Z"/><path d="M${x - 5},${y} l4,4 l7,-8"/></g>`;
-    case 'librarian': return `<g ${s}><path d="M${x - 13},${y - 10} h8 v22 h-8 Z M${x - 3},${y - 13} h7 v25 h-7 Z M${x + 7},${y - 8} l6,-2 l5,20 l-6,2 Z"/></g>`;
   }
 }
 
@@ -188,30 +196,12 @@ function renderGraph(s: StudioState): void {
     const g = nodeEls.get(r);
     if (!g) continue;
     g.setAttribute('class', `node ${a.status}`);
-    const texts = g.querySelectorAll('text');
-    texts[1]!.textContent = a.status;
-    const lbl = a.label.length > 34 ? `${a.label.slice(0, 33)}…` : a.label;
-    texts[2]!.textContent = lbl;
-    // The model under the role (from run_started), as a black chip.
+    const t = g.querySelectorAll('text');
+    t[1]!.textContent = a.status.toUpperCase();
     const mn = modelName(s.run?.models[r]);
-    if (texts[3]!.textContent !== mn) {
-      texts[3]!.textContent = mn;
-      const w = mn ? mn.length * 6.5 + 14 : 0;
-      const rect = g.querySelector<SVGRectElement>('.model-chip')!;
-      rect.setAttribute('width', String(w));
-      rect.setAttribute('x', String(Number(rect.dataset['cx']) - w / 2));
-    }
+    t[2]!.textContent = mn.length > 21 ? `${mn.slice(0, 20)}…` : mn;
+    t[3]!.textContent = a.label.length > 23 ? `${a.label.slice(0, 22)}…` : a.label;
   }
-  // The compact team list (shown instead of the ring on short screens).
-  const tl = ROLE_LIST.map((r) => {
-    const a = s.agents[r];
-    return `<div class="tr s-${a.status}" style="--c:${COLOR[r]}"><b>${r}</b><span class="st">${a.status}</span><i>${esc(modelName(s.run?.models[r]))}</i><em>${esc(a.label)}</em></div>`;
-  }).join('');
-  const tle = $('#teamlist');
-  if (tle.innerHTML !== tl) tle.innerHTML = tl;
-  const ph = s.phase;
-  $('#core-gen').textContent = ph ? (ph.phase === 'exam' || ph.phase === 'done' ? (ph.phase === 'exam' ? 'EXAM' : 'DONE') : `G${ph.generation}`) : 'G0';
-  $('#core-sub').textContent = ph ? ph.phase : 'waiting';
 }
 
 interface Packet { from: Role; to: Role; t0: number; dur: number; el: SVGGElement; path: { a: { x: number; y: number }; c: { x: number; y: number }; b: { x: number; y: number } } }
@@ -233,6 +223,7 @@ function launchPackets(): void {
       packets.push({ from: m.from, to, t0: performance.now(), dur: 1100, el, path: { a, c, b } });
       edgeEls.get(edgeKey(m.from, to))?.classList.add('hot');
       edgeEls.get(edgeKey(m.from, to))?.setAttribute('style', `stroke:${col}`);
+      graph.querySelector(`.elabel[data-k="${edgeKey(m.from, to)}"]`)?.classList.add('hot');
     }
   }
 }
@@ -252,9 +243,10 @@ function animatePackets(now: number): void {
         const ed = edgeEls.get(edgeKey(p.from, p.to));
         ed?.classList.remove('hot');
         ed?.removeAttribute('style');
+        graph.querySelector(`.elabel[data-k="${edgeKey(p.from, p.to)}"]`)?.classList.remove('hot');
       }
-      const node = nodeEls.get(p.to)?.querySelector('.node-ring');
-      node?.animate([{ strokeWidth: 8 }, { strokeWidth: 3 }], { duration: 500 });
+      const node = nodeEls.get(p.to)?.querySelector('.node-box');
+      node?.animate([{ strokeWidth: 5 }, { strokeWidth: 1.5 }], { duration: 500 });
     }
   }
 }
@@ -276,7 +268,7 @@ function renderFeed(s: StudioState): void {
   $('#feed').innerHTML = st + list
     .map((m) => {
       const v = m.kind === 'verdict' ? (/^REJECT/.test(m.title) ? 'verdict-no' : /^ACCEPT|^Exam/.test(m.title) ? 'verdict-ok' : '') : '';
-      return `<div class="msg ${v}" style="--c:${COLOR[m.from]}"><div class="h"><b>${m.from}</b> → ${m.to}<span class="kind">${m.kind}</span></div>
+      return `<div class="msg ${v}" style="--c:${COLOR[m.from]}"><div class="h"><span class="ts">${m.at.slice(11, 19)}</span><span class="kind">${m.kind}</span><b>${m.from}</b><i>→</i>${m.to}</div>
         <details><summary>${esc(m.title)}</summary><pre>${esc(m.body)}</pre></details></div>`;
     })
     .join('');
@@ -332,7 +324,7 @@ function renderLive(s: StudioState): void {
     c.el.className = `card ${big ? 'big' : 'small'} ${!big && e.finishedAt ? 'leaving' : ''} ${loading ? 'loading' : ''}`;
     // The page renders at the big size (below the card's header strip); thumbnails are scaled down copies.
     const scale = rect.w / W;
-    const HDR = innerHeight <= 900 ? 36 : 46;
+    const HDR = innerHeight <= 900 ? 34 : 40;
     // The game page draws its own heading at the top; the card's strip shows the title, so that band is cropped off.
     const CROP = 80;
     Object.assign(c.frame.style, { width: `${W}px`, height: `${bigH - HDR + CROP}px`, top: big ? `${HDR - CROP}px` : `${-CROP * scale}px`, transform: `scale(${scale})` });
@@ -441,6 +433,14 @@ function renderEvolution(s: StudioState): void {
     h += `<text class="delta-t" x="${W - Rr}" y="${Y(last.champion) - 10}" text-anchor="end" fill="var(--ink)">${pct(last.champion)}</text>`;
   } else h += `<text class="axis-t" x="${W / 2}" y="${H / 2}" text-anchor="middle">waiting for the baseline score…</text>`;
   $('#chart').innerHTML = h;
+  // The payoff in big type: where the team started, where it is now.
+  const base = pts[0];
+  const now = pts[pts.length - 1];
+  const kept = pts.filter((p) => p.accepted === true).length;
+  const binned = pts.filter((p) => p.accepted === false).length;
+  $('#evohead').innerHTML = base && now
+    ? `<div class="kv"><span class="pk">BASELINE</span><b>${pct(base.champion)}</b></div><div class="arrow">→</div><div class="kv"><span class="pk">CHAMPION</span><b>${pct(now.champion)}</b></div><div class="kv delta ${now.champion >= base.champion ? 'up' : 'down'}"><span class="pk">DELTA</span><b>${now.champion >= base.champion ? '+' : '−'}${Math.abs((now.champion - base.champion) * 100).toFixed(1)}</b></div><div class="kv small"><span class="pk">CHANGES</span><b><span class="g">${kept} kept</span> · <span class="r">${binned} binned</span></b></div>`
+    : `<div class="kv"><span class="pk">BASELINE</span><b class="pend">measuring…</b></div>`;
   renderLineage(s);
 }
 
@@ -505,7 +505,7 @@ function renderMemory(s: StudioState): void {
   const counts = Object.entries(m.stats).map(([k, v]) => `<div><b>${v}</b><span>${k.replace(/([A-Z])/g, " $1")}</span></div>`).join('');
   const lessons = m.topLessons
     .slice(0, 6)
-    .map((l) => `<div class="lesson"><div>${esc(l.text)}</div><div><div class="bar"><i style="width:${Math.round(l.confidence * 100)}%"></i></div><div class="ev">${l.confidence.toFixed(2)} · +${l.support}/−${l.contradict}</div></div></div>`)
+    .map((l) => `<div class="lesson"><div><span class="lid">${esc(l.id)}</span><span class="lsrc">${l.source}</span>${esc(l.text)}</div><div><div class="bar"><i style="width:${Math.round(l.confidence * 100)}%"></i></div><div class="ev">${l.confidence.toFixed(2)} · +${l.support}/−${l.contradict}</div></div></div>`)
     .join('');
   // Heatmap: kinds (most observed) × rack·stance.
   const ps = m.placementStats;
@@ -638,6 +638,7 @@ let lastSlow = 0;
 function frame(now: number): void {
   launchPackets();
   animatePackets(now);
+  inspector.render(focusKey);
   // Lingering episodes depend on the clock, so the live panel is refreshed twice a second anyway.
   if (dirty || now - lastSlow > 500) {
     dirty = false;
