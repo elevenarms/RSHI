@@ -1,0 +1,57 @@
+# The honest reframe (source of truth for paper, deck, site, video)
+
+Decided 17 Oct 2026, 15:25, after the 12-drill replication. Every surface tells this story with
+these numbers. Never quote +17.8 pp without the replication beside it.
+
+## The story in one line
+
+We built a team of open models that rewrites its own system and keeps only changes that pass a
+measured, paired test. Then we caught it learning superstitions, and measured why.
+
+## Order of emphasis
+
+1. **The system works end to end:** five Nemotron models on Crusoe propose typed edits to their
+   own genome; a deterministic Gatekeeper accepts or rejects them on paired drills; memory
+   accumulates; every token is logged and replayable.
+2. **Finding 1 (deterministic physics, robust):** a cup stood mouth up keeps half its grime.
+   Drinkware/ramekins washed alone: mouth up clean 0/11, soil left 49% (CI 28–71), 224 ml of water
+   retained; mouth down 26/26 clean, 0% soil, 0 ml. Bowls mouth up held 1.17 L each; one mixing
+   bowl held 2.9 L and starved the pump. +60 pp P(clean) (CI 33–87) over 15 hollow items.
+   Quantified, not discovered (DishwasherBench docs, phenomenon P01).
+3. **Learned superstitions (the headline contribution):**
+   - Evolution accepted 2 of 6 proposals, both memory-derived playbook rules. On 3 paired
+     validation drills each: +25.1 pp (rule R1.1, bowls) and +15.7 pp (rule R2.1/R2.2, glasses
+     mouth down, cutlery upright).
+   - A first 4-drill held-out exam showed 46.0% → 63.7% (+17.8 pp, 3/4 wins, sign test p ≈ 0.31).
+   - **It did not replicate.** 12 held-out drills × 2 repeats, 23 valid pairs: baseline 46.0%,
+     champion 45.7%, Δ −0.3 pp, bootstrap 95% CI −13 to +12, 12 wins / 9 losses / 2 ties,
+     sign test p = 0.66, Wilcoxon p = 0.77.
+   - **Why: the weak loader's sampling noise.** The same genome on the same drill differed by
+     0.20 share on average between repeats (up to 0.80; one drill scored 0.000 and 0.803).
+     With per-drill SD ≈ 0.3, 3–4 paired drills cannot resolve a 3 pp margin; even 23 pairs only
+     resolve about ±12 pp.
+   - **The superstition:** R1.1 ("do not place the cereal bowl upper-rack mouth-down tilted 45°")
+     rested on 1 failure in 2 loads. The controlled sweep washed every mouth-down bowl clean,
+     45° included. The memory never saw a mouth-up hollow item, so it learned "mouth down" from
+     successes only, and its biggest real loss (items left out: cereal bowls left out 21 times,
+     never loaded) was never targeted.
+   - **The good rule:** R2.1 (glasses mouth down) is real physics: it matches Finding 1. So the
+     team learned one true rule and one superstition, and the Gatekeeper could not tell them apart.
+4. **The lesson / contribution:** a self-improving loop on a noisy weak model needs (a) many more
+   paired drills and repeats per drill, (b) a statistical acceptance test (sequential test or CI)
+   instead of a fixed margin, and (c) a physics check of each learned rule (cheap controlled
+   washes) before it enters the playbook, i.e. falsify the lesson, not just score the genome.
+   Deterministic simulators make (c) possible: a learned rule can be tested directly.
+
+## Wording
+
+- Headline options: "SparkleTeam learned to load a dishwasher, and learned a superstition."
+  / "Self-improvement that knows when it's fooling itself."
+- Tone: rigorous, deadpan, unembarrassed. A null replication is reported as a finding, not
+  hidden. "We report, with appropriate gravity, that our team became superstitious."
+- Ablation (rules on/off) is still running; if it lands, cite it. Otherwise say "an ablation is
+  in progress" and lean on the controlled sweep.
+
+Data: docs/crew/insights/INSIGHTS.md and data/; runs 2026-10-17T21-34-04-exam and
+2026-10-17T21-50-44-exam (12-drill, repeats 1 and 2), 2026-10-17T20-49-49-evolve (evolution,
+4-drill exam).
