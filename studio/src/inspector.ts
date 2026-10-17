@@ -144,6 +144,8 @@ export class Inspector {
       return;
     }
     this.setFrame(e, o.itemId);
+    const cap = this.box.querySelector('.tt-cap');
+    if (cap) cap.textContent = o.label ?? (o.kind ? o.kind.replace(/_/g, ' ') : o.itemId);
     const st = o.status;
     const pill = st === 'clean' ? 'CLEAN' : st === 'not-clean' ? 'NOT CLEAN' : st === 'loaded' ? 'LOADED' : 'DIRTY';
     const pending = '<span class="pend">pending</span>';

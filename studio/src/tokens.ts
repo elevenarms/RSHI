@@ -41,7 +41,7 @@ export interface TokenPanel {
   push(e: StreamEv): void;
 }
 
-export function tokenPanel(root: HTMLElement, meter: HTMLElement): TokenPanel {
+export function tokenPanel(root: HTMLElement, meter: HTMLElement, taskOf: (episodeKey: string) => string | undefined = () => undefined): TokenPanel {
   const lanes = new Map<string, Lane>();
   const order: Lane[] = [];
   const grid = document.createElement('div');
@@ -146,7 +146,7 @@ export function tokenPanel(root: HTMLElement, meter: HTMLElement): TokenPanel {
       l.dirty = false;
       const live = !l.done || l.pending.length > 0;
       l.el.classList.toggle('done', !live);
-      l.head.innerHTML = `<div><b>${l.role}</b><em>${Math.round(l.chars / CPT)} tok</em></div><div><i>${esc(short(l.model))}</i><span>${esc(l.episodeKey.replace(/^(train|eval|exam)-/, ''))}</span></div>`;
+      l.head.innerHTML = `<div><b>${l.role}</b><span class="task">${esc(taskOf(l.episodeKey) ?? (l.episodeKey ? l.episodeKey : 'team'))}</span><em>${Math.round(l.chars / CPT)} tok</em></div><div><i>${esc(short(l.model))}</i></div>`;
       l.body.innerHTML = `<div>${l.segs.map((s) => `<span class="c-${s.ch}">${esc(s.text)}</span>`).join('')}${live ? '<span class="caret"></span>' : ''}</div>`;
     }
     if (now - lastMeter > 250) {

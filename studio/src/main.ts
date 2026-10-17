@@ -23,7 +23,7 @@ let dirty = true;
 const pendingPackets: MessageView[] = [];
 let lastExamSeq = 0;
 
-const tokens = tokenPanel($('#waterfall'), $('#meter'));
+const tokens = tokenPanel($('#waterfall'), $('#meter'), (key) => state.episodes[key]?.taskTitle);
 const inspector = new Inspector($<HTMLIFrameElement>('#tt'), $('#objcard'), $('.turntable'));
 
 const source = startSource(
@@ -199,8 +199,8 @@ function renderGraph(s: StudioState): void {
     const t = g.querySelectorAll('text');
     t[1]!.textContent = a.status.toUpperCase();
     const mn = modelName(s.run?.models[r]);
-    t[2]!.textContent = mn.length > 21 ? `${mn.slice(0, 20)}…` : mn;
-    t[3]!.textContent = a.label.length > 23 ? `${a.label.slice(0, 22)}…` : a.label;
+    t[2]!.textContent = mn.length > 19 ? `${mn.slice(0, 18)}…` : mn;
+    t[3]!.textContent = a.label.length > 21 ? `${a.label.slice(0, 20)}…` : a.label;
   }
 }
 
@@ -294,10 +294,12 @@ function renderLive(s: StudioState): void {
   const W = stage.clientWidth;
   const H = stage.clientHeight;
   const others = live.filter((e) => e.key !== focusKey);
-  const thumbH = others.length ? Math.min(118, H * 0.24) : 0;
-  const gap = 8;
-  const bigH = H - (thumbH ? thumbH + gap : 0);
-  const thumbW = thumbH * (W / bigH);
+  // The other episodes stack in a column on the right, so the hero view keeps a less extreme aspect.
+  const gap = 6;
+  const thumbW = others.length ? Math.round(Math.min(W * 0.24, 260)) : 0;
+  const bigW = W - (thumbW ? thumbW + gap : 0);
+  const bigH = H;
+  const thumbH = others.length ? Math.min((H - gap * (others.length - 1)) / others.length, thumbW * 0.75) : 0;
   for (const e of live) {
     let c = cards.get(e.key);
     if (!c) {
@@ -319,16 +321,16 @@ function renderLive(s: StudioState): void {
     }
     const big = e.key === focusKey;
     const idx = others.indexOf(e);
-    const rect = big ? { x: 0, y: 0, w: W, h: bigH } : { x: idx * (thumbW + gap), y: bigH + gap, w: thumbW, h: thumbH };
+    const rect = big ? { x: 0, y: 0, w: bigW, h: bigH } : { x: bigW + gap, y: idx * (thumbH + gap), w: thumbW, h: thumbH };
     Object.assign(c.el.style, { left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px` });
     const loading = c.el.classList.contains('loading');
     c.el.className = `card ${big ? 'big' : 'small'} ${!big && e.finishedAt ? 'leaving' : ''} ${loading ? 'loading' : ''}`;
     // The page renders at the big size (below the card's header strip); thumbnails are scaled down copies.
-    const scale = rect.w / W;
+    const scale = big ? 1 : Math.min(rect.w / bigW, rect.h / bigH);
     const HDR = innerHeight <= 900 ? 34 : 40;
     // The page's own heading is hidden with `&nohud`, so nothing needs cropping any more.
     const CROP = 0;
-    Object.assign(c.frame.style, { width: `${W}px`, height: `${bigH - HDR + CROP}px`, top: big ? `${HDR - CROP}px` : `${-CROP * scale}px`, transform: `scale(${scale})` });
+    Object.assign(c.frame.style, { width: `${bigW}px`, height: `${bigH - HDR + CROP}px`, top: big ? `${HDR - CROP}px` : `${-CROP * scale}px`, transform: `scale(${scale})` });
     const sig = `${big}|${e.stream.length}|${e.finishedAt}|${e.wash}`;
     if (sig !== c.sig) {
       c.sig = sig;
@@ -502,7 +504,9 @@ let memAt = '';
 function renderMemory(s: StudioState): void {
   const m = s.memory;
   if (!m || m.at === memAt) return;
+  if (memAt && document.visibilityState === 'visible') setTab('mem', true);
   memAt = m.at;
+  $('#memtag').textContent = `${m.stats.lessons} lessons`;
   const counts = Object.entries(m.stats).map(([k, v]) => `<div><b>${v}</b><span>${k.replace(/([A-Z])/g, " $1")}</span></div>`).join('');
   const lessons = m.topLessons
     .slice(0, 6)
@@ -633,6 +637,15 @@ addEventListener('keydown', (e) => {
 addEventListener('resize', () => (dirty = true));
 
 // ---------------------------------------------------------------------------------------------
+
+// Timeline tabs: the event log and the lessons share the left column. A memory update shows the lessons for a while.
+let tabTimer = 0;
+function setTab(t: string, auto = false): void {
+  $('#chatter').dataset['tab'] = t;
+  clearTimeout(tabTimer);
+  if (auto) tabTimer = window.setTimeout(() => ($('#chatter').dataset['tab'] = 'log'), 9000);
+}
+document.querySelectorAll<HTMLButtonElement>('#chatter .tab').forEach((b) => b.addEventListener('click', () => setTab(b.dataset['t'] ?? 'log')));
 
 buildGraph();
 let lastSlow = 0;
