@@ -227,7 +227,10 @@ async function main(): Promise<void> {
     const game = await gameFor(tier, [...train, ...test]);
     // The exam's baseline is the stored one when memory has it (same id as the run that made it).
     const baseline = (resume || mode === 'exam') && storedBase !== undefined ? storedBase : baselineGenome({ loader: loaderModel, loaderEffort });
-    bus.emit({ type: 'run_started', mode, models: MODELS(loaderModel), trainTasks: train.map((t) => ({ id: t.id, title: t.title, items: t.itemCount })), testTasks: test.map((t) => ({ id: t.id, title: t.title, items: t.itemCount })), generations: mode === 'evolve' ? startGen + generations : 0, gameUrl: game.url });
+    // The loader(s) the run's genomes actually use (stored genomes carry their own loader model).
+    const examChampion = mode === 'exam' ? ((flags.get('champion') === undefined ? memory.champion() : memory.genomes().find((g) => g.genome.id === flags.get('champion'))?.genome) ?? null) : null;
+    const shownLoaders = [...new Set([baseline, resumeFrom, examChampion].filter((g): g is Genome => g !== null && g !== undefined).map((g) => g.loader.model))];
+    bus.emit({ type: 'run_started', mode, models: MODELS(shownLoaders.join(' / ') || loaderModel), trainTasks: train.map((t) => ({ id: t.id, title: t.title, items: t.itemCount })), testTasks: test.map((t) => ({ id: t.id, title: t.title, items: t.itemCount })), generations: mode === 'evolve' ? startGen + generations : 0, gameUrl: game.url });
     if (resume) {
       // The lineage so far, so the studio shows the earlier generations too.
       for (const g of memory.genomes()) bus.emit({ type: 'genome', genome: g.genome, status: g.status as 'baseline' | 'candidate' | 'accepted' | 'rejected' | 'champion' });
