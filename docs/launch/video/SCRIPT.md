@@ -2,7 +2,8 @@
 
 **Working title:** *SparkleTeam: Towards Recursive Self Home Improvement*
 **Length:** 3:00 (12 scenes; VO 379 words, about 2:42 of speech at 140 wpm, plus musical breathing room)
-**Status:** draft for review. Nothing gets rendered until this is approved.
+**Status:** reframed 17 Oct 2026 per `docs/crew/launch/REFRAME.md` (headline: learned superstitions; the 4-drill gain did not replicate).
+**Earlier status:** draft for review. Nothing gets rendered until this is approved.
 **Sources of truth:** `docs/crew/paper/main.tex` (all numbers), `packages/crew/runs/2026-10-17T20-49-49-evolve/report.md`
 (decisions, genome diff), `packages/levels/src/starter/levels.ts` (items and soils).
 
@@ -105,8 +106,8 @@ Title at 0:21: `SparkleTeam` / `Towards Recursive Self Home Improvement`.
    underneath: `score = points(clean items) / points available`.
 
 **VO.**
-> Items drop into the racks with rigid-body physics. / Then a GPU wash simulation, / calibrated
-> against real washes, / decides what comes out clean. / An item scores only if it's clean. // No
+> Items drop into the racks with rigid-body physics. / Then a GPU wash simulation
+> decides what comes out clean. / An item scores only if it's clean. // No
 > judge. / No rubric. // And you can't sweet-talk physics: / a bowl under a dead spot stays dirty, /
 > however eloquently you describe it.
 
@@ -216,9 +217,8 @@ and green, are connected by a dotted line.
 
 **VO.**
 > Six proposals. / Two accepted. // Both were short playbook rules, / distilled from memory: /
-> glasses mouth-down, / cutlery upright. // The Planner, / the memory brief, / the preflight check:
-> / all rejected, / for this loader. // On a different loader, the Planner won. / The right scaffold
-> has to be measured, / not assumed.
+> one about a cereal bowl, / one about glasses and cutlery. // The Planner, / the memory brief, /
+> the preflight check: / all rejected.
 
 **On-screen text.** Proposal titles (abridged, from Table 3): `Enable Planner` · `Memory brief,
 expanded` · `Enable preflight` · `Avoid poor bowl placement` · `Memory brief, focused` · `Rules
@@ -242,12 +242,22 @@ for glasses & cutlery`. Footnote `validation share; fresh seeds each generation`
    very end: `n = 4 drills, one seed each`.
 
 **VO.**
-> Then the exam: / levels it had never seen, / with baby bottles, / lunch tubs, / and cheese baked
-> onto a gratin dish. // Forty-six percent / became sixty-three point seven. // Plus seventeen point eight
-> points, / ahead on three drills of four.
+> Then the exam: / levels it had never seen, / with baby bottles and baked-on cheese. // On four drills, / forty-six percent became sixty-three point seven. // Then
+> we ran it again, / on twelve drills, / twice. / The gain vanished.
 
 **On-screen text.** As above; small `loaded 23 → 35 of 48 · clean-of-loaded 100% → 91%`.
 **Sound.** Music drops to a single held chord at the reveal of `63.7%`; nothing else.
+
+### S10a Noise: · MANIM (`Noise`)
+
+**Visual.** The same drill, the same genome, two repeats: one bar at 0.000, one at 0.803. Footnote:
+`mean repeat-to-repeat difference 0.20 share · per-drill SD ≈ 0.3`. Line: `A weak model is a noisy witness.`
+
+**VO.**
+> Why? / The same drill, / the same team, / scored zero, / then point eight. // A weak model is a
+> noisy witness. / Three drills can't hear a three-point gain.
+
+**Sound.** Music only.
 
 ### S10b Finding 1: 2:37–2:47 · MANIM (`Finding1`)
 
@@ -262,7 +272,22 @@ bowls held 1.17 L each mouth up. Caption: `quantified in simulation · Dishwashe
 **On-screen text.** As above (source: `docs/crew/insights/INSIGHTS.md`, FINDING 1).
 **Sound.** Music only.
 
-### S11 The honest limits: 2:37–2:50 · MANIM (`Limits`)
+### S10c Learned superstitions: · MANIM (`Superstitions`)
+
+**Visual.** Title `Learned superstitions`. Left: rule R1.1 (do not place the cereal bowl upper rack,
+mouth down tilted 45°), evidence 1 failure in 2 loads, accepted +25.1 pp; the controlled sweep washes
+every mouth-down bowl clean, 45° included: stamp `SUPERSTITION`. Right: R2.1 (glasses mouth down),
+accepted +15.7 pp, matches Finding 1: stamp `PHYSICS`. Bottom: `The Gatekeeper accepted both.`
+
+**VO.**
+> And what had it learned? / One rule / rested on a single failure in two loads: / never put the
+> cereal bowl mouth down at forty-five degrees. / A controlled sweep washed every mouth-down bowl
+> clean. // The other, / glasses mouth down, / is physics. // The team had learned one true rule, /
+> and one superstition. / The gatekeeper couldn't tell them apart.
+
+**Sound.** One soft stamp per verdict.
+
+### S11 The honest limits (DROPPED in the reframe; its caveats now live in S10, S10a and S10c): 2:37–2:50 · MANIM (`Limits`)
 
 **Visual.** The exam numbers shrink to the top-left corner. A plain "footnotes" panel draws, like
 the bottom of a paper page, and lines write in one at a time: `n = 4 · one-sided sign test, 3 of 4:
@@ -278,6 +303,22 @@ icon sits in front of a door outline for the last line (the one moment of quiet 
 **On-screen text.** The footnotes above, set like a paper's footer.
 **Sound.** Music thins to piano only.
 
+### S11a The lesson: · MANIM (`Lesson`)
+
+**Visual.** Three numbered lines type in: more trials · a statistical test · check every rule against physics.
+
+**VO.**
+> The fix is plain: / more trials, / a statistical test, / and checking every rule against physics.
+
+### S11b Next: · MANIM (`Next`)
+
+**Visual.** Black `NEXT` tag. A loop: discover → verify → consolidate, with `LoRA SFT on Crusoe` on
+the consolidate arrow.
+
+**VO.**
+> Next, / we put the lessons into the weights: / fine-tune the noisy loader on the team's best runs,
+> / so the gatekeeper can finally hear the signal.
+
 ### S12 Outro: 2:50–3:00 · TITLE / UI (`Outro`, `UI-02`)
 
 **Visual.** (2:50–2:54) UI-02: the full Studio (`sparkleteam-final.png`) in a slow pull-back,
@@ -288,8 +329,8 @@ token lanes and the live washer visible. (2:54–3:00) Cut to white. Title write
 Crusoe, NVIDIA Nemotron`.
 
 **VO.**
-> Open models. / Cheap inference. / A reward you can't argue with. // SparkleTeam: / towards
-> recursive self home improvement.
+> Open models. / A reward you can't argue with. // SparkleTeam: / self-improvement that knows
+> when it's fooling itself.
 
 **On-screen text.** As above.
 **Sound.** Music resolves on the title; 1 s of room tone; out.

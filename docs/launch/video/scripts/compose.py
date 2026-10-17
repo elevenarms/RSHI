@@ -358,7 +358,7 @@ def main() -> None:
     teaser = tl.get("teaser")
     if teaser:
         clip = next(c for c in edl["clips"] if c["clip"] == teaser["clip"])
-        end = clip["start"] + clip["length"] + float(teaser.get("after", 0))
+        end = clip["start"] + float(teaser.get("end_at", clip["length"])) + float(teaser.get("after", 0))
         start = max(end - float(teaser.get("seconds", 10)), 0)
         tout = out.with_name(out.stem + "-teaser.mp4")
         run(["ffmpeg", "-y", "-v", "error", "-ss", f"{start:.3f}", "-i", str(out), "-t", str(teaser.get("seconds", 10)),

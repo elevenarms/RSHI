@@ -28,7 +28,7 @@ from scipy.signal import resample_poly
 HERE = Path(__file__).resolve().parent.parent
 NAMES = {
     "01": "hook", "02": "machine", "03": "physics", "04": "loader", "05": "team", "06": "memory",
-    "07": "genome", "08": "gatekeeper", "09": "evolution", "10": "exam", "10b": "finding1", "11": "limits", "12": "outro",
+    "07": "genome", "08": "gatekeeper", "09": "evolution", "10": "exam", "10a": "noise", "10b": "finding1", "10c": "superstitions", "11": "limits", "11a": "lesson", "11b": "next", "12": "outro",
 }
 PAUSE_SHORT, PAUSE_LONG, HEAD, TAIL = 0.25, 0.60, 0.30, 0.50
 OUT_SR = 48000

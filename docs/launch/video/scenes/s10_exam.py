@@ -15,8 +15,8 @@ DRILLS = [
     ("Party #2", 77, 15, 32, "+22.1"),
     ("Family #3", 71, 31, 38, "+9.9"),
 ]
-BASE = -1.55
-H = 3.0
+BASE = -1.35
+H = 2.9
 XS = [-5.45, -3.75, -2.05, -0.35]
 BW = 0.42
 
@@ -54,29 +54,27 @@ class Exam(Scene):
             dl = mono(d, SIZE_SMALL - 1, DIRTY if d.startswith("−") else CLEAN, W800)
             dl.move_to([x, BASE + max(a, b) * H + 0.3, 0])
             deltas.add(dl)
-        self.play(Create(base), FadeIn(names), FadeIn(leg), run_time=0.6)
-        self.play(LaggedStart(*[AnimationGroup(GrowFromEdge(p[0], DOWN), GrowFromEdge(p[1], DOWN)) for p in pairs], lag_ratio=0.2), run_time=1.4, rate_func=EASE)
-        self.play(LaggedStart(*[FadeIn(d, shift=UP * 0.06) for d in deltas], lag_ratio=0.2), run_time=0.8)
+        self.play(Create(base), FadeIn(names), FadeIn(leg), run_time=0.5)
+        self.play(LaggedStart(*[AnimationGroup(GrowFromEdge(p[0], DOWN), GrowFromEdge(p[1], DOWN)) for p in pairs], lag_ratio=0.15), run_time=1.0, rate_func=EASE)
+        self.play(LaggedStart(*[FadeIn(d, shift=UP * 0.06) for d in deltas], lag_ratio=0.15), run_time=0.5)
 
-        # The mean.
+        # The first exam's mean.
         x0 = 0.95
-        g0v, chv = ValueTracker(0), ValueTracker(0)
-        n1 = counter(g0v, "{:.1f}%", SIZE_H1 + 2, INK, W600, lambda m: m.move_to([x0, 1.2, 0], aligned_edge=LEFT))
-        arrow = mono("→", SIZE_H1 + 2, GREY).move_to([x0 + 2.7, 1.2, 0])
-        n2 = counter(chv, "{:.1f}%", SIZE_H1 + 2, INK, W800, lambda m: m.move_to([x0 + 3.2, 1.2, 0], aligned_edge=LEFT))
-        cap = label("mean share, 4 held-out drills", SIZE_CAPTION - 2, GREY).move_to([x0, 1.85, 0], aligned_edge=LEFT)
-        self.add(n1)
-        self.play(FadeIn(cap), g0v.animate.set_value(46.0), run_time=0.9, rate_func=EASE)
-        self.add(n2)
-        self.play(FadeIn(arrow), chv.animate.set_value(63.7), run_time=1.1, rate_func=EASE)
-        gain = mono("+17.8 pp", SIZE_HERO + 10, CLEAN, W800).move_to([x0, -0.2, 0], aligned_edge=LEFT)
-        self.play(FadeIn(gain, shift=UP * 0.08), run_time=0.9)
-        ahead = mono("ahead on 3 of 4 drills", SIZE_SMALL - 1, INK).next_to(gain, DOWN, buff=0.25).align_to(gain, LEFT)
-        self.play(FadeIn(ahead), run_time=0.5)
-        foot = VGroup(
-            mono("loaded 23 → 35 of 48 · clean-of-loaded 100% → 91%", SIZE_CAPTION - 2, GREY),
-            mono("n = 4 drills, one seed each", SIZE_CAPTION - 2, GREY),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.08).move_to([x0, -2.25, 0], aligned_edge=LEFT)
-        self.wait(0.6)
-        self.play(FadeIn(foot), run_time=0.8)
-        self.wait(1.4)
+        first = mono("first exam · 4 drills", SIZE_CAPTION - 1, HELD, W800).move_to([x0, 1.85, 0], aligned_edge=LEFT)
+        m1 = mono("46.0% → 63.7%", SIZE_H2, INK, W600).move_to([x0, 1.3, 0], aligned_edge=LEFT)
+        gain = mono("+17.8 pp", SIZE_HERO, CLEAN, W800).move_to([x0, 0.45, 0], aligned_edge=LEFT)
+        self.play(FadeIn(first), FadeIn(m1), run_time=0.6)
+        self.play(FadeIn(gain, shift=UP * 0.08), run_time=0.7)
+        self.wait(0.9)
+
+        # The replication flattens it.
+        strike = Line(gain.get_left() + LEFT * 0.08, gain.get_right() + RIGHT * 0.08, color=INK, stroke_width=4)
+        self.play(gain.animate.set_color(GREY).set_opacity(0.6), m1.animate.set_color(GREY), first.animate.set_opacity(0.6), Create(strike), run_time=0.8)
+        rep = VGroup(mono("replication", SIZE_CAPTION - 1, HELD, W800), mono("12 held-out drills × 2 repeats · 23 pairs", SIZE_CAPTION - 1, HELD, W600)).arrange(DOWN, aligned_edge=LEFT, buff=0.06).move_to([x0, -0.55, 0], aligned_edge=LEFT)
+        m2 = mono("46.0% → 45.7%", SIZE_H2, INK, W600).move_to([x0, -1.25, 0], aligned_edge=LEFT)
+        d2 = mono("Δ −0.3 pp", SIZE_H1 + 10, INK, W800).move_to([x0, -2.0, 0], aligned_edge=LEFT)
+        ci = mono("95% CI −13 to +12 · p = 0.66", SIZE_SMALL - 1, INK).next_to(d2, DOWN, buff=0.18).align_to(d2, LEFT)
+        self.play(FadeIn(rep), FadeIn(m2), run_time=0.7)
+        self.play(FadeIn(d2, shift=UP * 0.06), run_time=0.7)
+        self.play(FadeIn(ci), run_time=0.5)
+        self.wait(1.6)
