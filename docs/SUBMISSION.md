@@ -1,11 +1,11 @@
-# Crew: project summary
+# SPARKLETEAM: project summary
 
 Crusoe x Cerebral Valley Recursive Agents Hackathon. Full technical description:
-[README.md](README.md).
+[README.md](README.md). Paper: *Towards Recursive Self Home Improvement*.
 
 ## What it does
 
-Crew (`packages/crew`, package `@spotless/crew`) is an agent team on Crusoe Managed Inference that
+SPARKLETEAM (the crew: `packages/crew`, package `@spotless/crew`) is an agent team on Crusoe Managed Inference that
 plays Spotless, the dishwasher-loading game of DishwasherBench, and improves itself across runs.
 After each generation it reviews its episodes item by item, proposes changes to its own prompts,
 playbook, tool policy and team structure, and keeps a change only if it scores better than the
@@ -23,9 +23,11 @@ levels.
 
 ## How it works
 
-- **Roles.** Planner (`zai-org/GLM-5.3-Flash`), Loader (`deepseek-ai/DeepSeek-V4.1-Flash`, tools
-  and images), Critic (`deepseek-ai/DeepSeek-V4-Pro`, thinking), Coach (`zai-org/GLM-5.3`),
-  Librarian (memory, deterministic code), Gatekeeper (statistics, deterministic code).
+- **Roles.** Loader (`nvidia/NVIDIA-Nemotron-3.5-Super-VL`, thinking off, tools and images),
+  Planner (Nemotron-3.5-Super-VL), Critic (`nvidia/Nemotron-3-Nano-Omni-Reasoning-30B-A3B`, with
+  pictures of the final load), Coach (`nvidia/NVIDIA-Nemotron-3-Super-120B-A12B`), Librarian
+  (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` for the brief, plus memory code), Gatekeeper
+  (statistics, deterministic code).
 - **Genome.** The rewritable part of the team: role prompts, a playbook of rules with evidence
   links, tool policy (denied tools, enforced `check_load` before `start_cycle`), team structure
   (planner on/off, memory brief on/off), loader settings (reasoning effort, images, turn limit).
@@ -41,7 +43,7 @@ levels.
   improves by at least the margin and failures do not increase.
 - **Exam.** Training drills come from course levels 1-4; exam drills from levels 5-7, which
   contain item kinds and soils absent from training. Baseline genome (generation 0) and champion
-  play the same exam drills and seeds.
+  play the same exam drills and seeds. Everything runs on the fast wash tier, 8 shards.
 - **Studio.** `apps/studio` at http://127.0.0.1:8790: team graph, live 3D view, loader stream,
   evolution chart with lineage, memory panel, exam results. Runs can be replayed.
 - **Crusoe.** OpenAI-compatible Serverless Inference (`api.inference.crusoecloud.com/v1`),
@@ -62,22 +64,21 @@ pnpm --filter @spotless/crew crew serve --run <id>
 
 ## Results
 
-> Placeholders until the run completes.
+Final run `2026-10-17T20-49-49-evolve` (archived in `packages/crew/runs/`):
 
 | | |
 | --- | --- |
-| Generations | {{GENERATIONS}} |
-| Candidates accepted / proposed | {{ACCEPTED}}/{{PROPOSED}} |
-| Exam, baseline (gen 0) | {{EXAM_BASELINE}} |
-| Exam, champion | {{EXAM_CHAMPION}} |
-| Delta | {{DELTA}} |
-| Wall-clock time | {{RUN_TIME}} |
-| Tokens | {{TOKENS}} |
-| Inference cost | {{COST}} |
+| Generations | 3 (fast tier, 8 shards) |
+| Candidates accepted / proposed | 2/6 (both memory-derived playbook rules) |
+| Exam, baseline (gen 0) | 46.0% |
+| Exam, champion | 63.7% |
+| Delta | +17.8 pp (better on 3 of 4 held-out drills) |
+| Evolution wall-clock time | 22.7 min |
+| Tokens | 38.3M in (32.0M cached), 0.49M out |
 
-Top lessons:
-
-{{TOP_LESSONS}}
+Accepted: a rule against the bowl placement that kept failing (+0.251 on validation), and
+placement rules for glasses and cutlery (+0.157). Top lessons: tilt glasses mouth-down in the
+upper rack; load cutlery upright in the cutlery basket; tomato-sauce items on the lower rack on edge.
 
 ## Limits
 

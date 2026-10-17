@@ -1,13 +1,14 @@
-# Crew: a dishwasher-loading team that gets better with experience
+# SPARKLETEAM: a dishwasher-loading team that gets better with experience
 
-Crew (`packages/crew`, package `@spotless/crew`) is a team of agents on
+SPARKLETEAM (the crew: `packages/crew`, package `@spotless/crew`) is a team of agents on
 [Crusoe Managed Inference](https://crusoe.ai) that plays Spotless, the dishwasher-loading game of
 DishwasherBench, and improves itself between runs. After every generation it reviews what worked
 item by item, rewrites its own prompts, playbook, tool policy and team structure, and keeps a
 change only if it scores measurably better on fresh tasks. The proof is a before-and-after exam on
 levels the team never trained on.
 
-Built for the Crusoe x Cerebral Valley Recursive Agents Hackathon.
+Built for the Crusoe x Cerebral Valley Recursive Agents Hackathon. Paper: *Towards Recursive Self
+Home Improvement*.
 
 ## Contents
 
@@ -45,20 +46,19 @@ items come out clean, and the team earns points for each one.
 
 ## The team
 
-Each model role runs on a Crusoe-served open model. Roles are spread across models so each stays
-within its own per-model rate limit.
+Every model role runs on an NVIDIA Nemotron model served by Crusoe.
 
 | Role | Runs on | Job |
 | --- | --- | --- |
-| Planner | `zai-org/GLM-5.3-Flash` | Writes a loading plan from the level card and the memory brief. |
-| Loader | `deepseek-ai/DeepSeek-V4.1-Flash` | Plays the game: MCP tools plus rendered images of the racks. |
-| Critic | `deepseek-ai/DeepSeek-V4-Pro` (thinking) | Item-by-item post-mortem of each episode; emits lessons. |
-| Coach | `zai-org/GLM-5.3` | Proposes typed edits to the team's own genome. |
-| Librarian | deterministic code | Memory: stores episodes, merges lessons, writes the brief. |
+| Loader | `nvidia/NVIDIA-Nemotron-3.5-Super-VL` (thinking off) | Plays the game: MCP tools plus rendered images of the racks. |
+| Planner | `nvidia/NVIDIA-Nemotron-3.5-Super-VL` | Writes a loading plan from the level card and the memory brief. |
+| Critic | `nvidia/Nemotron-3-Nano-Omni-Reasoning-30B-A3B` | Item-by-item post-mortem of each episode, with pictures of the final load; emits lessons. |
+| Coach | `nvidia/NVIDIA-Nemotron-3-Super-120B-A12B` | Proposes typed edits to the team's own genome. |
+| Librarian | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` + memory code | Memory code stores episodes, merges lessons and derives placement statistics; the model writes the brief. |
 | Gatekeeper | deterministic code | Statistics: accepts or rejects each candidate genome. |
 
-The two judging roles, Librarian and Gatekeeper, are code on purpose: the team can change how it
-plays, never how it is graded.
+The judge is code on purpose: the Gatekeeper's statistics and the physics decide what is kept, so
+the team can change how it plays, never how it is graded.
 
 ## The loop
 
@@ -134,7 +134,7 @@ a historical score instead would mix in which drills happened to be drawn.
 A candidate is accepted only if:
 
 1. its mean score share on the validation drills beats the incumbent's by at least the margin
-   (`{{MARGIN}}`), and
+   (0.03 mean score share), and
 2. it has no more failed episodes (provider errors, turn or token budget exhaustion) than the
    incumbent.
 
@@ -154,8 +154,9 @@ training never showed: a baby bottle and teat, beakers with spouts, lunch tubs, 
 tin, a rack, a platter, a board, burnt sugar, overnight soils. The champion has to transfer what
 it learned about stance, rack and spray coverage to objects it has never handled.
 
-The baseline genome (generation 0) and the champion play the same exam drills with the same seeds,
-on the official wash tier. The reported number is the difference in mean score share.
+The baseline genome (generation 0) and the champion play the same exam drills with the same seeds.
+Everything (practice, validation and exam) runs on the fast wash tier, spread over 8 game-server
+shards that wash in parallel. The reported number is the difference in mean score share.
 
 Honest limits:
 
@@ -212,30 +213,43 @@ pnpm --filter @spotless/crew crew serve --run <id>
 
 ## Results
 
-> Placeholders until the run completes.
+Final run `2026-10-17T20-49-49-evolve`, archived in `packages/crew/runs/2026-10-17T20-49-49-evolve`
+(events, every model call, episode records and transcripts, memory snapshot, `report.md`). Replay:
+`pnpm --filter @spotless/crew crew serve --run 2026-10-17T20-49-49-evolve`.
 
 | | |
 | --- | --- |
-| Generations | {{GENERATIONS}} |
-| Candidates accepted / proposed | {{ACCEPTED}}/{{PROPOSED}} |
-| Exam, baseline (gen 0) | {{EXAM_BASELINE}} |
-| Exam, champion | {{EXAM_CHAMPION}} |
-| Delta | {{DELTA}} |
-| Wall-clock time | {{RUN_TIME}} |
-| Tokens | {{TOKENS}} |
-| Inference cost | {{COST}} |
+| Generations | 3 (fast tier, 8 shards) |
+| Candidates accepted / proposed | 2/6 (both memory-derived playbook rules) |
+| Exam, baseline (gen 0) | 46.0% |
+| Exam, champion (`G2-704108`) | 63.7% |
+| Delta | +17.8 pp (better on 3 of 4 held-out drills) |
+| Evolution wall-clock time | 22.7 min |
+| Tokens | 38.3M in (32.0M cached), 0.49M out |
 
-Per exam task:
+Per held-out exam drill (points / points available):
 
-{{EXAM_PER_TASK}}
+| Drill | Baseline | Champion | Delta |
+| --- | --- | --- | --- |
+| Family drill #0 | 48/59 (81%) | 42/59 (71%) | -10 pp |
+| Baking drill #1 | 28/71 (39%) | 63/71 (89%) | +49 pp |
+| Dinner party drill #2 | 15/77 (19%) | 32/77 (42%) | +22 pp |
+| Family drill #3 | 31/71 (44%) | 38/71 (54%) | +10 pp |
+| **Mean share** | **46.0%** | **63.7%** | **+17.8 pp** |
 
-Lineage of accepted changes:
+Accepted changes (the champion's playbook, G0 -> G2):
 
-{{LINEAGE}}
+- *Avoid poor-performing bowl placement* (+0.251 mean share, 3 wins / 0 losses on validation):
+  R1.1, do not place the Vitrelle cereal bowl on the upper rack mouth-down tilted 45 degrees; put
+  it on the lower rack on edge or leave it out.
+- *Add high-confidence placement rules for glasses and cutlery* (+0.157, 2 wins / 1 loss): R2.1,
+  glasses and tumblers upper rack mouth-down; R2.2, cutlery upright in the cutlery basket.
 
-Top lessons the team learned:
+Rejected: enabling the Planner (-0.086), two memory-brief variants (+0.021, -0.291) and the
+enforced preflight check (-0.109), all below the 0.03 margin.
 
-{{TOP_LESSONS}}
+Top lessons in memory: tilt glasses mouth-down in the upper rack (0.69); load cutlery upright in
+the cutlery basket (0.69); place items with tomato sauce on the lower rack on edge (0.65).
 
 ## Where things are
 
