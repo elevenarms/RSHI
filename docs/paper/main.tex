@@ -1,7 +1,7 @@
 % Towards Recursive Self Home Improvement
 % Build: tectonic main.tex   (see Makefile)
 \documentclass[10pt,twocolumn,letterpaper]{article}
-\usepackage[letterpaper,margin=0.65in,columnsep=0.22in]{geometry}
+\usepackage[letterpaper,hmargin=0.62in,vmargin=0.6in,columnsep=0.22in]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{mathptmx}
 \usepackage{amsmath}
@@ -28,18 +28,20 @@
 % =====================================================================
 \newcommand{\TBD}[1]{\textcolor{red}{\textbf{#1}}}
 % --- run configuration (known; confirm against the run) ---
-\newcommand{\Generations}{5}            % generations actually run
+\newcommand{\Generations}{3}            % generations actually run
 \newcommand{\ProposalsPerGen}{2}
 \newcommand{\PracticeTasks}{4}
-\newcommand{\ValTasks}{4}
+\newcommand{\ValTasks}{3}
 \newcommand{\ExamTasks}{4}
 \newcommand{\Margin}{0.03}
+\newcommand{\TurnCap}{40}
+\newcommand{\RunId}{2026-10-17T20-49-49-evolve}
 % --- headline exam numbers (mean score share, %) ---
 \newcommand{\BaselineExam}{\TBD{??}}    % e.g. 41.2\%
 \newcommand{\ChampionExam}{\TBD{??}}    % e.g. 63.0\%
 \newcommand{\ExamDelta}{\TBD{??}}       % champion - baseline, in pp, e.g. +21.8
 \newcommand{\ExamWins}{\TBD{??}}        % exam tasks where champion > baseline, e.g. 3/4
-\newcommand{\BaselinePractice}{\TBD{??}}% baseline practice mean share (gen 0), %
+\newcommand{\BaselinePractice}{39\%}     % G0-fc671e practice mean share (given)
 \newcommand{\CleanRateBaseline}{\TBD{??}} % clean / loaded on the exam, baseline, e.g. 85\% (23/27)
 \newcommand{\CleanRateChampion}{\TBD{??}} % clean / loaded on the exam, champion
 \newcommand{\LoadedBaseline}{\TBD{??}}  % items loaded / offered on the exam, baseline, e.g. 27/48
@@ -60,9 +62,16 @@
 \newcommand{\LessonsStored}{\TBD{??}}   % lessons in semantic memory at the end
 \newcommand{\EpisodesPlayed}{\TBD{??}}  % episodes played in total (train+eval+exam)
 % Accepted edits, one \item each: title, op(s), validation delta.
+% --- generation 1 of the final run (shares on Tutorial, Lunch, Weeknight; given, to confirm) ---
+\newcommand{\GOneIncTut}{88\%} \newcommand{\GOneIncLun}{15\%} \newcommand{\GOneIncWkn}{0\%}  \newcommand{\GOneIncMean}{34.2\%}
+\newcommand{\GOneAId}{G1-579472} \newcommand{\GOneATitle}{\TBD{``title?''}}
+\newcommand{\GOneATut}{69\%}  \newcommand{\GOneALun}{40\%}  \newcommand{\GOneAWkn}{0\%}   \newcommand{\GOneAMean}{36.3\%} \newcommand{\GOneADelta}{+2.1}
+\newcommand{\GOneAVerdict}{rejected (below the margin)}
+\newcommand{\GOneBId}{G1-bc908e} \newcommand{\GOneBTitle}{\TBD{``title?''}}
+\newcommand{\GOneBTut}{72\%}  \newcommand{\GOneBLun}{42\%}  \newcommand{\GOneBWkn}{\TBD{??}} \newcommand{\GOneBMean}{\TBD{??}} \newcommand{\GOneBDelta}{\TBD{??}}
+\newcommand{\GOneBVerdict}{\TBD{accepted/rejected?}}
 \newcommand{\AcceptedEdits}{%
-  \item G1: ``Enable a Planner to guide loading'' (team structure), $\bar\Delta=+0.135$.
-  \item \TBD{G?: ``title'' (\texttt{op} \dots), $\bar\Delta=+?.??$.}}
+  \item \TBD{G?: ``title'' (\texttt{op} \dots), $\bar\Delta=+?.??$ (or: none accepted).}}
 % --- cost ---
 \newcommand{\TokensIn}{\TBD{??}}        % input tokens, all roles, e.g. 48.1M
 \newcommand{\TokensOut}{\TBD{??}}       % output tokens
@@ -71,8 +80,8 @@
 \newcommand{\WallTime}{\TBD{??}}        % e.g. 3 h 10 min
 % --- plot: incumbent validation share per generation, (gen,share) pairs in [0,1].
 %     Replace with the run's incumbent mean share after each generation.
-\newcommand{\IncumbentCurve}{(0,0.50) (1,0.50) (2,0.50) (3,0.50) (4,0.50) (5,0.50)}
-\newcommand{\CandidatePoints}{(1,0.45) (1,0.55) (2,0.48) (2,0.52) (3,0.46) (3,0.50) (4,0.47) (4,0.53) (5,0.49) (5,0.51)}
+\newcommand{\IncumbentCurve}{(0,0.342) (1,0.342) (2,0.50) (3,0.50)}
+\newcommand{\CandidatePoints}{(1,0.363) (1,0.40) (2,0.48) (2,0.52) (3,0.46) (3,0.50)}
 \newcommand{\PlotIsPlaceholder}{1}      % set to 0 to remove the PLACEHOLDER watermark
 % =====================================================================
 
@@ -89,24 +98,23 @@
 How best to load a dishwasher is a combinatorial, physical problem with an unusually honest reward:
 a simulated wash decides which items come out clean \citep{composo2026dishwasherbench}. We use it
 as a testbed for self-improving multi-agent systems built only from open, inexpensive models. A
-deliberately weak loader (Nemotron-3.5-Lightning-30B-A3B, thinking off) is surrounded by a planner,
+deliberately weak loader (Nemotron-3.5-Super-VL, thinking off) is surrounded by a planner,
 a vision critic, a coach and a librarian, all open Nemotron models on Crusoe serverless inference.
 Between generations the team rewrites a typed genome of its own prompts, playbook, tool policy and
 structure, and a deterministic gatekeeper keeps an edit only if it beats the incumbent on paired,
 fresh tasks. On a held-out exam whose levels contain item kinds and soils never seen in training,
 the evolved team scores \ChampionExam{} against \BaselineExam{} for the bare loader
-(\ExamDelta{}\,pp). We report what the loop changed, what it cost, and why the evidence is still thin.
+(\ExamDelta{}\,pp). We report what changed, what it cost, and why the evidence is thin.
 \end{abstract}
 
 \section{Introduction}
 Recursive self-improvement is usually discussed for systems that rewrite their own weights. A
 humbler, testable version keeps the model fixed and lets the system rewrite the \emph{scaffold}
 around it: prompts, memory, tools and the division of labour
-\citep{zelikman2023stop,hu2024adas,zhang2025dgm}. Two things make such loops hard to trust. The
-reward is often an LLM judge, which can be flattered and drifts \citep{zheng2023judge}, and a loop
-that optimises a proxy finds the proxy's seams
-\citep{skalse2022rewardhacking,krakovna2020specgaming,manheim2018goodhart}. And improvements are
-usually measured on the distribution they were selected on.
+\citep{zelikman2023stop,hu2024adas,zhang2025dgm}. Such loops are hard to trust: the reward is often an LLM judge, which can be flattered
+\citep{zheng2023judge}, a loop optimising a proxy finds its seams
+\citep{skalse2022rewardhacking,krakovna2020specgaming,manheim2018goodhart}, and gains are usually
+measured where they were selected.
 
 We take the problem of loading a dishwasher, using DishwasherBench, Composo's open (MIT) benchmark
 \citep{composo2026dishwasherbench}. It models one real machine (Bosch SMV4HAX40G): items are placed
@@ -121,7 +129,7 @@ spray arm stays dirty however eloquently the agent describes it. It is also hard
 fits, so the player chooses what to load as well as how; jets reach only part of the load
 \citep{perezmohedano2015pept,perezmohedano2017integrated}; and choosing a subset under capacity is
 a knapsack over strongly NP-hard 3D packing \citep{kellerer2004knapsack,martello2000threedim}.
-Household benchmarks score symbolic goal predicates
+Household benchmarks score symbolic goals
 \citep{srivastava2021behavior,shridhar2020alfred,puig2018virtualhome,savva2019habitat}, and prior
 dishwasher-loading work scores grasp success or agreement with a human preference
 \citep{voysey2021dishwasher,jain2023transformers,kapelyukh2021myhouse,lin2021gnn}; to our knowledge
@@ -139,7 +147,7 @@ typed operations, with the judging roles (memory accounting, acceptance) in dete
 team can change how it plays, never how it is graded.
 \item A paired acceptance rule over shared seeds in a deterministic simulator, a three-layer memory
 with shrunken Bayesian confidence, and a held-out exam on task families with new kinds and soils.
-\item An end-to-end run on open Nemotron models with lineage, costs and limits reported.
+\item An end-to-end run on open Nemotron models, with lineage, costs and limits.
 \end{itemize}
 
 \section{Related Work}
@@ -150,15 +158,14 @@ G\"odel Agent and SICA rewrite their own logic or code \citep{yin2024godel,robey
 searches workflows with MCTS and lets cheap models match expensive ones \citep{zhang2024aflow};
 GPTSwarm optimises prompts and agent connectivity \citep{zhuge2024gptswarm}; FunSearch and
 AlphaEvolve gate LLM proposals with automatic evaluators
-\citep{romeraparedes2024funsearch,novikov2025alphaevolve}. Our Coach is a typed, constrained
-meta-agent in this line; we differ in the physical reward, the paired gate and held-out families.
+\citep{romeraparedes2024funsearch,novikov2025alphaevolve}. Our Coach is a typed, constrained meta-agent in this line.
 
 \textbf{Prompt and program optimisation.} OPRO optimises from a scored history \citep{yang2023opro};
 Promptbreeder and EvoPrompt evolve prompts by LLM mutation
 \citep{fernando2023promptbreeder,guo2023evoprompt}; DSPy and MIPRO tune multi-stage LM programs
 against a metric \citep{khattab2023dspy,opsahlong2024mipro}; TextGrad and Trace propagate textual
 feedback \citep{yuksekgonul2024textgrad,cheng2024trace}; GEPA's reflection on traces is closest to
-our Critic$\to$Coach loop \citep{agrawal2025gepa}. We widen the edit space to tools and team structure.
+our Critic$\to$Coach loop \citep{agrawal2025gepa}.
 
 \textbf{Memory and multi-agent systems.} Reflexion stores verbal reflections \citep{shinn2023reflexion};
 ExpeL and CLIN distil and transfer cross-task insights \citep{zhao2023expel,majumder2023clin};
@@ -167,9 +174,8 @@ Generative Agents and MemGPT structure retrieval under a context budget
 \citep{park2023generative,packer2023memgpt}. Unlike self-refinement \citep{madaan2023selfrefine},
 our lessons are counted against physics. Role-based teams
 \citep{wu2023autogen,hong2023metagpt,li2023camel,qian2023chatdev} and debate \citep{du2023debate}
-follow fixed processes; ours edits its own structure. Voting and repeated sampling with a verifier
-\citep{li2024moreagents,brown2024monkeys,snell2024ttc} trade compute for parameters; our simulator
-is such a verifier, but far too slow to call per action.
+follow fixed processes; ours edits its own structure. Voting and verified repeated sampling trade
+compute for parameters \citep{li2024moreagents,brown2024monkeys,snell2024ttc}; our verifier is too slow to call per action.
 
 \textbf{Search over loads.} Loading is constrained packing with a physical, black-box objective
 \citep{wang2019stable,zhao2021online}; genetic algorithms \citep{holland1975adaptation,goldberg1989genetic},
@@ -177,16 +183,15 @@ CMA-ES over poses \citep{hansen2001cmaes}, quality-diversity \citep{mouret2015ma
 optimisation \citep{snoek2012practical} and MCTS over placement sequences
 \citep{kocsis2006uct,browne2012mcts} are natural per-instance optimisers. We do not search loads
 directly: every evaluation costs a wash, and the product is \emph{one load}, not a better loader,
-so nothing transfers to a new set of items. We optimise the system, and test whether its
-improvements carry to tasks they were not selected on. Search is a natural future tool for the team.
+so nothing transfers to a new set of items. We optimise the system and test whether its improvements transfer.
 
 \section{Method}
 \textbf{The team} (Table~\ref{tab:team}, Fig.~\ref{fig:loop}). The Loader plays through the
 standard DishwasherBench harness tools \citep{composo2026dishwasherbench}, text only. Optionally a
 Planner turns the level card and a memory brief into a per-item plan (rack, stance, what to leave
 out). After each practice episode the Critic gets the item-by-item outcome (rack, stance, clean,
-residue regions, retained water, movement), the plan, the playbook, the loader's last words and
-two renders of the final load, and writes up to five tagged lessons with a polarity. The Coach
+residue, retained water), plan, playbook and two renders of the final load, and writes up to five
+tagged lessons with a polarity. The Coach
 proposes edits; the Librarian condenses memory into a brief.
 
 \begin{table}[t]
@@ -196,15 +201,15 @@ proposes edits; the Librarian condenses memory into a brief.
 \toprule
 Role & Model (open, on Crusoe) & Job \\
 \midrule
-Loader & Nemotron-3.5-Lightning-30B-A3B & plays, 13 tools \\
-Planner & Nemotron-3.5-Super-VL & per-item plan \\
-Critic & Nemotron-3-Nano-Omni-Reas.-30B-A3B & post-mortem \\
+Loader & Nemotron-3.5-Super-VL (no thinking) & plays, 13 tools \\
+Planner & Nemotron-3.5-Super-VL (low effort) & per-item plan \\
+Critic & Nano-Omni-Reasoning-30B (thinking) & post-mortem \\
 Coach & Nemotron-3-Super-120B-A12B & genome edits \\
 Librarian & Nemotron-3-Nano-30B-A3B + code & memory, brief \\
 Gatekeeper & deterministic statistics & accept/reject \\
 \bottomrule
 \end{tabular}
-\caption{Roles and models \citep{nvidia2025nemotron3,nvidia2025nemotron3nano,nvidia2026nemotron3super}; loader thinking off.}
+\caption{Roles and models \citep{nvidia2025nemotron3,nvidia2025nemotron3nano,nvidia2026nemotron3super}.}
 \label{tab:team}
 \end{table}
 
@@ -217,7 +222,7 @@ Gatekeeper & deterministic statistics & accept/reject \\
 \node[box] (prac) {Practice\\[-1pt]{\scriptsize incumbent}};
 \node[box,right=6mm of prac] (crit) {Critique\\[-1pt]{\scriptsize + renders}};
 \node[box,right=6mm of crit] (mem) {Memory\\[-1pt]{\scriptsize 3 layers}};
-\node[box,below=10mm of mem] (prop) {Propose\\[-1pt]{\scriptsize typed edits}};
+\node[box,below=8mm of mem] (prop) {Propose\\[-1pt]{\scriptsize typed edits}};
 \node[box,left=6mm of prop] (eval) {Paired eval\\[-1pt]{\scriptsize same seeds}};
 \node[box,left=6mm of eval,fill=black!7] (gate) {Gatekeeper\\[-1pt]{\scriptsize $\bar\Delta\ge\delta$}};
 \node[box,below=5mm of gate.south west,anchor=north west,minimum width=0pt,fill=black!7] (exam) {Exam: G0 vs.\ champion on held-out levels 5--7};
@@ -227,11 +232,11 @@ Gatekeeper & deterministic statistics & accept/reject \\
 \draw[ar] (prop) -- (eval);
 \draw[ar] (eval) -- (gate);
 \draw[ar] (gate) -- node[left,font=\scriptsize]{accept} (prac);
-\draw[ar,dashed] (gate.north east) -- node[pos=0.5,below,sloped,font=\scriptsize]{reject (logged)} (mem.south west);
+\draw[ar,dashed] (gate.north east) -- node[pos=0.62,below,sloped,font=\scriptsize,inner sep=1pt]{reject} (mem.south west);
 \draw[ar,dotted] (gate.south) -- node[right,font=\scriptsize]{after last gen.} (gate.south |- exam.north);
 \end{tikzpicture}
-\caption{One generation of the loop. Rejections (title, hypothesis, per-task deltas) go to
-procedural memory and are shown to the Coach; after the last generation the champion sits the exam.}
+\caption{One generation of the loop. Rejections (title, hypothesis, per-task deltas) are logged
+and shown to the Coach.}
 \label{fig:loop}
 \end{figure}
 
@@ -243,9 +248,8 @@ the brief's lesson count); and loader settings (reasoning effort, images, denied
 The Coach can change it only by \texttt{add\_rule}, \texttt{edit\_rule}, \texttt{remove\_rule},
 \texttt{set\_prompt}, \texttt{set\_team} and \texttt{set\_loader}. A proposal carries a title and a
 falsifiable hypothesis, should change one coherent thing so gains can be attributed, and is shown
-past rejections. Invalid edits (ranges, sizes, tools that may never be denied) are dropped; a
-child's id hashes its content with its parent, so the lineage is diffable. The baseline G0 is the
-bare loader: no planner, no brief, no preflight, an empty playbook, 120 turns.
+past rejections. Invalid edits are dropped; ids hash content and parent, so lineage is diffable. The baseline G0 is the
+bare loader: no planner, no brief, no preflight, an empty playbook.
 
 \textbf{Three-layer memory.} The \emph{episodic} layer keeps every training episode item by item;
 the \emph{semantic} layer keeps lessons (from the Critic, and observed from placement statistics),
@@ -270,12 +274,12 @@ same seeds. Let $P$ be the drills both played validly and $x_t$ the share on dri
 \end{equation}
 and the decision is void if $|P|<3$. Agent failures (turn or token limit, nothing loaded) score what
 they scored; \emph{invalid} episodes (provider or harness errors) are replayed on the same task and
-seed up to twice, and drills still unpaired are dropped for both genomes.\footnote{Our first
-version counted provider errors as agent failures. In generation~2 the fast, non-thinking loader
-at 8-way concurrency hit Crusoe's per-model request cap (HTTP 429), and both decisions were voided.
-On cheap shared endpoints rate limits are a real systems constraint, and an acceptance rule must
-not confuse infrastructure noise with policy quality.} Since loading and washing are deterministic,
-pairing cancels drill difficulty, leaving the genome's effect plus sampling noise. The accepted
+seed up to twice, and drills still unpaired are dropped for both genomes.\footnote{Our first version counted provider errors as agent failures. In a pilot, generation~2's
+fast, non-thinking loader hit a shared deployment's request cap (HTTP 429) and both decisions were
+voided. On cheap shared endpoints rate limits are a real systems constraint, and an acceptance rule
+must not confuse infrastructure noise with policy quality.} Pairing matters because episodes vary enormously: the same baseline genome scored 88\% on a
+Tutorial drill and 0\% on a Weeknight drill in one evaluation. Since loading and washing are
+deterministic, pairing cancels drill difficulty, leaving the genome's effect plus sampling noise. The accepted
 candidate with the largest $\bar\Delta$ becomes the incumbent; its validation episodes are the next
 practice set.
 
@@ -288,21 +292,55 @@ G0 and the champion play identical exam drills; nothing is learned from them.
 
 \section{Experimental Setup}
 All models run on Crusoe Managed (serverless) Inference via an OpenAI-compatible API, with a
-client-side limiter (600 requests per minute per model) and byte-stable prompts for prefix
-caching (83--90\% of input tokens hit the cache in smoke runs). The loader is the weakest Nemotron
-that still plays: 41--70\% in smokes, where Nemotron-3-Nano-Omni-Reasoning saturated at 100\% and
-Nano-30B or Omni with thinking off looped on refused calls. A drill is 12 items of a
-DishwasherBench level drawn by seed, cutlery in proportion. We ran \Generations{} generations:
-\PracticeTasks{} baseline practice drills, \ProposalsPerGen{} proposals and \ValTasks{} paired
-fresh validation drills per generation, $\delta=\Margin$, then an exam on \ExamTasks{} held-out
-drills (Table~\ref{tab:exam}). Washes use the fast tier (4\,mm blocks rather than 2\,mm), whose
+client-side rate limiter and byte-stable prompts for prefix caching (83--90\% of input tokens hit
+the cache in smoke runs). In a sweep (40-request bursts, 60\,s at 8 in flight) only Nemotron-3.5-Lightning and
+Gemma-4-31B returned HTTP 429s; the Nano models sustained ${\sim}300$ calls/min at 370\,ms median.
+
+\begin{table}[t]
+\centering\footnotesize
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Loader (thinking) & Share & Loaded/clean & Turns & Time \\
+\midrule
+DeepSeek-V4.1-Flash (off) & 100\% & 12/12 & 21 & 90\,s \\
+Qwen3.8-27B (off) & 100\% & 12/12 & 19 & 199\,s \\
+GLM-5.3-Flash (low) & 93\% & 10/10 & 40 & 97\,s \\
+DeepSeek-V4-Flash (off) & 89\% & 12/11 & 40 & 89\,s \\
+gpt-oss-120b (low) & 49\% & 8/7 & 40 & 154\,s \\
+Nemotron-3-Nano-30B (low) & 41\% & 5/5 & 40 & 870\,s \\
+\textbf{Nemotron-3.5-Super-VL (off)} & \textbf{21\%} & \textbf{3/3} & \textbf{40} & \textbf{129\,s} \\
+Nemotron-3-Nano-30B (off) & 0\% & 1/0 & loops & \\
+Nemotron-3-Nano-Omni (off) & 0\% & 2/0 & loops & \\
+\bottomrule
+\end{tabular}
+\caption{Choosing the loader: one smoke per model on the same 12-item Breakfast drill (seed 7,
+61 points, 40-turn cap). We take the weakest that still plays.}
+\label{tab:select}
+\end{table}
+
+\textbf{Choosing a weak loader.} We want headroom: a loader that saturates leaves the Gatekeeper
+nothing to measure. Table~\ref{tab:select} shows one smoke per model on the same drill. Nemotron-3.5-Super-VL
+with thinking off is the weakest model that still plays: everything it loads comes out clean, but it
+runs out of turns. Without thinking the Nano models loop; with it, Nano-30B plays but takes
+${\sim}6\times$ Super-VL's wall time, too slow for an evolution loop. Our pilot used Nemotron-3.5-Lightning-30B-A3B
+(41--70\% in smokes) until its shared deployment throttled us to about five calls per minute. In that pilot's generation~1 the Gatekeeper accepted ``Enable a
+Planner to guide loading'' at $\bar\Delta=+0.135$ and rejected a bowl-mouth-down playbook rule at
+$-0.095$: structure helped, a plausible domain rule did not.
+
+\textbf{Protocol.} A drill is 12 items of a DishwasherBench level drawn by seed, cutlery in
+proportion. The final run (\texttt{\RunId}) has \Generations{} generations: \PracticeTasks{}
+baseline practice drills, \ProposalsPerGen{} proposals and \ValTasks{} paired fresh validation
+drills per generation, $\delta=\Margin$, a \TurnCap-turn cap per episode, 8 game servers with one
+wash queue each and 8 episodes in flight, then an exam on \ExamTasks{} held-out drills
+(Table~\ref{tab:exam}). Washes use the fast tier (4\,mm blocks rather than 2\,mm), whose
 verdicts agree with the official tier's on 91\% of the standard load and 97\% of pieces on the
 course levels \citep{composo2026dishwasherbench}.
 
-The bare loader often wanders until the turn or token limit (about 115--120 turns, 3M input
-tokens), sometimes loading nothing (0 of 87 points on one weeknight drill) or few items, yet what
-it loads mostly comes out clean. It fails at planning and commitment, not physics, which suggests
-where a team can help.
+\textbf{Baseline.} G0 scored \BaselinePractice{} on its practice drills: Breakfast 56\% (8 of 8
+loaded items clean), Tutorial 44\% (8 of 8, wash started early with 4 items left out), Weeknight
+32\% (5 loaded, 3 clean), Lunch 24\% (2 of 2). It fails at committing to placements within the turn
+budget, not at knowing what washes clean, which suggests where a team can help.
 
 \section{Results}
 \begin{table}[t]
@@ -329,63 +367,57 @@ Mean share & & & \BaselineExam & \ChampionExam & \ExamDelta \\
 \ChampionExam{} against \BaselineExam{} for G0 (\ExamDelta{}\,pp), ahead on \ExamWins{} drills
 (Table~\ref{tab:exam}). It loads \LoadedChampion{} items against \LoadedBaseline{}, with
 clean-of-loaded rates of \CleanRateChampion{} and \CleanRateBaseline{}; failed episodes
-\FailedChampion{} vs.\ \FailedBaseline{}. Read the gain through share $=$ (loaded fraction)
-$\times$ (clean rate): the baseline's failure mode predicts that most of it is the first factor.
+\FailedChampion{} vs.\ \FailedBaseline{}. Since share $=$ loaded fraction $\times$ clean rate, the baseline's failure mode predicts most of any gain in the first factor.
 
 \textbf{Evolution.} The Gatekeeper accepted \Accepted{} of \Proposed{} candidates over
 \Generations{} generations (Fig.~\ref{fig:curve}); memory ended with \LessonsStored{} lessons from
-\EpisodesPlayed{} episodes. Generation~1 shows the pattern. ``Enable a Planner to guide loading'', a
-structural change, was \emph{accepted} at $\bar\Delta=+0.135$ (2 wins, 1 loss, 1 tie); ``Add a
-bowl-mouth-down rule'', a playbook rule grounded in a Critic lesson, was \emph{rejected} at
-$-0.095$ (1 win, 2 losses). Structure helped the weak loader; a plausible domain rule hurt it,
-perhaps by adding a constraint it then spent turns satisfying. Accepted edits:
+\EpisodesPlayed{} episodes. In generation~1 the incumbent scored \GOneIncTut, \GOneIncLun{} and
+\GOneIncWkn{} on Tutorial, Lunch and Weeknight (mean \GOneIncMean). \GOneAId{} (\GOneATitle) scored
+\GOneATut, \GOneALun, \GOneAWkn{} (\GOneAMean, $\GOneADelta$\,pp): \GOneAVerdict. \GOneBId{}
+(\GOneBTitle) scored \GOneBTut, \GOneBLun, \GOneBWkn{} (\GOneBMean, \GOneBDelta\,pp): \GOneBVerdict. Accepted edits:
 \begin{itemize}
 \AcceptedEdits
 \end{itemize}
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[x=11mm,y=20mm,font=\scriptsize]
-\draw[->] (0,0) -- (5.4,0) node[right]{gen};
+\begin{tikzpicture}[x=16mm,y=14mm,font=\scriptsize]
+\draw[->] (0,0) -- (3.4,0) node[right]{gen};
 \draw[->] (0,0) -- (0,1.08) node[above]{share};
-\foreach \x in {0,...,5} \draw (\x,0) -- (\x,-0.03) node[below]{\x};
+\foreach \x in {0,...,3} \draw (\x,0) -- (\x,-0.03) node[below]{\x};
 \foreach \y in {0,0.5,1} \draw (0,\y) -- (-0.06,\y) node[left]{\y};
-\draw[black!15] (0,0.5) -- (5.2,0.5);
+\draw[black!15] (0,0.5) -- (3.2,0.5);
 \draw[black!45] plot[only marks,mark=*,mark size=0.8pt] coordinates {\CandidatePoints};
 \draw[very thick] plot[const plot] coordinates {\IncumbentCurve};
 \ifnum\PlotIsPlaceholder=1
-  \node[red,font=\bfseries\small,rotate=10,opacity=0.6] at (2.6,0.78) {PLACEHOLDER};
+  \node[red,font=\bfseries\small,rotate=10,opacity=0.6] at (1.7,0.78) {PLACEHOLDER};
 \fi
 \end{tikzpicture}
-\caption{Incumbent mean validation share (steps) and candidates (dots) per generation. Seeds are
-fresh each generation, so only within-generation differences are comparable.}
+\caption{Incumbent (steps) and candidates (dots), mean validation share. Seeds are fresh each
+generation: only within-generation differences compare.}
 \label{fig:curve}
 \end{figure}
 
 \textbf{Cost.} The run took \WallTime{} and \TokensIn{} input tokens (\CacheHit{} cached) plus
-\TokensOut{} output tokens, an inference cost of \Cost{}; caching matters because the loader resends
-a growing, byte-stable history every turn.
+\TokensOut{} output tokens, an inference cost of \Cost{}.
 
 \section{Discussion and Limitations}
-The design point we would defend is the division of authority: the models may propose anything the
-edit grammar allows, but physics scores it and code decides, which is what makes a loop of cheap,
-fallible models safe to leave running and what LLM-judged loops lack
-\citep{zheng2023judge,amodei2016concrete}. The open question is credit assignment: does the lift
-come from structure (a planner that commits the loader to a list) or from content (rules and
-lessons about what washes clean)? The baseline's failure suggests structure; transfer to unseen
-kinds would need some content.
+The design point we would defend is the division of authority: models propose anything the edit
+grammar allows, but physics scores it and code decides, which LLM-judged loops lack
+\citep{zheng2023judge,amodei2016concrete}. The open question is credit assignment between structure
+(a planner that commits the loader to a list) and content (lessons about what washes clean).
 
 \textbf{Limitations.} \emph{One machine}: one dishwasher, programme and detergent; the exam tests
-transfer to new items, soils and loads, not new physics. \emph{Small $n$}: four validation and four
+transfer to new items, soils and loads, not new physics. \emph{Small $n$}: \ValTasks{} validation and \ExamTasks{}
 exam drills, one exam pass; no confidence interval worth the name, and a paired permutation or
-sign test \citep{dror2018hitchhiker} on four drills has little power. \emph{Stochastic sampling}:
+sign test \citep{dror2018hitchhiker} on so few drills has little power. \emph{Stochastic sampling}:
 the simulator is deterministic but the models are not, so pairing removes task variance, not policy
 variance. \emph{Fast tier}: a few percent of verdicts differ from the official tier.
 \emph{Multiple comparisons}: \ProposalsPerGen{} candidates per generation are each tested at a fixed
 margin and the best is kept, so validation gains are biased upwards, and repeated accept/reject on
 one benchmark overfits it \citep{gelman2013forking,dwork2015reusable,benjamini1995fdr}; the held-out
-exam, not the validation curve, is the evidence. \emph{Margin}: $\delta=\Margin$ over four drills is
-one to two average items (about 70 points over 12 items) on a single drill, below the plausible
+exam, not the validation curve, is the evidence. \emph{Margin}: $\delta=\Margin$ over \ValTasks{} drills is
+about one average item (some 70 points over 12 items) on a single drill, far below the
 run-to-run noise of a sampling loader; a sequential test \citep{wald1945sequential} or repeated
 validation would be the principled fix.
 
@@ -393,11 +425,11 @@ validation would be the principled fix.
 A team of open, inexpensive models can rewrite the system around a weak loader, keep only what the
 physics confirms, and carry the improvement to tasks with objects it has never handled. The
 dishwasher is a small domain, but its reward cannot be argued with, which is exactly what recursive
-self-(home-)improvement needs. Next: more exam passes, an official-tier exam, and a search tool
-(GA or MCTS over placements) that the team may decide to use.
+self-(home-)improvement needs. Next: more exam passes, an official-tier exam, and a placement-search
+tool the team may choose to use.
 
 \paragraph{Acknowledgements.} We thank Composo for releasing DishwasherBench under the MIT licence,
-Crusoe for the inference, and NVIDIA for the open Nemotron models.
+Crusoe for inference, and NVIDIA for the Nemotron models.
 
 {\scriptsize
 \bibliographystyle{abbrvnat}
