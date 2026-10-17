@@ -8,7 +8,7 @@ files, then the results. One block per VO clip; `scripts/make_vo.py` reads the `
 vo: SparkleTeam: a self-improving team of open Nemotron models, built today on Crusoe.
 
 ## B · live Studio (5–40 s)
-vo: This is a live run. A deliberately weak loader plays DishwasherBench, a real physics simulation, placing every item by tool call. Every token streams from Crusoe as it is generated. The Critic writes lessons into memory. The Coach rewrites the team's own genome, as typed edits. And a deterministic Gatekeeper keeps a change only if it wins on paired drills. The score chart moves only when the Gatekeeper says so.
+vo: This is the real tool, running. A deliberately weak loader plays DishwasherBench, a real physics simulation, placing every item by tool call. Every token streams from Crusoe as it is generated. The Critic writes lessons into memory. The Coach rewrites the team's own genome, as typed edits. And a deterministic Gatekeeper keeps a change only if it wins on paired drills. The score chart moves only when the Gatekeeper says so.
 
 ## C · code (40–47 s)
 vo: All of it built today: the crew package, the Studio, and the water effects.

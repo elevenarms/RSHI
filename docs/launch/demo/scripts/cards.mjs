@@ -1,5 +1,5 @@
 // Title/result cards (opaque 1920x1080) and overlays (transparent PNGs): lower thirds, tags, captions.
-// usage (from repo root): node docs/crew/launch/demo/scripts/cards.mjs <outDir>
+// usage (from repo root): node docs/crew/launch/demo/scripts/cards.mjs <outDir> [captions.json: render only the captions]
 import { createRequire } from 'node:module';
 import { readFileSync, mkdirSync } from 'node:fs';
 const require = createRequire(new URL('../../../../../apps/studio/package.json', import.meta.url));
@@ -31,8 +31,8 @@ const cards = {
     <div class="sub" style="font-size:32px">Rule R1.1 “no cereal bowl mouth-down at 45°” rested on <b>1 failure in 2 loads</b>.<br>The controlled sweep washed every mouth-down bowl clean, 45° included.</div>
     <div class="foot">R2.1 “glasses mouth down” was real physics. The Gatekeeper could not tell the two apart.</div></div>`,
   null: `${banner()}<div class="wrap"><span class="tag" style="background:#E6A100;color:#000">REPLICATION · 12 HELD-OUT DRILLS × 2</span><div class="hl">The +17.8 pp exam gain did not replicate.</div><div class="rule"></div>
-    <div style="display:flex;gap:120px;align-items:flex-end"><div><div class="small" style="margin:0 0 12px">Δ champion vs baseline</div><div class="big">−0.3 pp</div></div>
-    <div class="foot" style="margin:0 0 10px">95% CI −13 to +12 · 23 valid pairs<br>12 wins / 9 losses / 2 ties · sign test p = 0.66<br>cause: the weak loader's sampling noise (SD ≈ 0.3 per drill)</div></div></div>`,
+    <div style="display:flex;gap:120px;align-items:flex-end"><div><div class="small" style="margin:0 0 12px">Δ champion vs baseline</div><div class="big">−0.5 pp</div></div>
+    <div class="foot" style="margin:0 0 10px">95% CI −13 to +11 · 24 valid pairs<br>p = 0.83<br>cause: the weak loader's sampling noise (SD ≈ 0.3 per drill)</div></div></div>`,
   next: `${banner()}<div class="wrap"><span class="tag">NEXT · PROPOSED, NOT A RESULT</span><div class="hl">Fine-tune the noisy loader.</div><div class="rule"></div>
     <div class="sub" style="font-size:32px">LoRA SFT of Nemotron 3.5 Lightning on the team's best trajectories,<br>straight from the token-level call logs, on Crusoe Serverless Fine-Tuning.</div>
     <div class="foot">Goal: lower variance, so the Gatekeeper's paired test can resolve real gains and stop accepting superstitions.</div></div>`,
@@ -53,10 +53,13 @@ const shot = async (name, body, transparent) => {
   await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>${CSS}body{background:${transparent ? 'transparent' : '#fff'}}</style></head><body>${body}</body></html>`, { waitUntil: 'load' });
   await page.screenshot({ path: `${out}/${name}.png`, omitBackground: transparent });
 };
+const capsOnly = process.argv[3];
+if (!capsOnly) {
 for (const [k, b] of Object.entries(cards)) await shot(`card-${k}`, b, false);
 for (const [i, t] of LTS.entries()) await shot(`lt-${i}`, lt(String(i + 1).padStart(2, '0'), t), true);
 for (const [k, t] of Object.entries(TAGS)) await shot(`tag-${k}`, tag(t, k === 'code' ? '#000' : k.startsWith('replay') ? '#E6A100' : '#D64545'), true);
-const caps = JSON.parse(readFileSync(`${here}vo/captions.json`, 'utf8'));
+}
+const caps = JSON.parse(readFileSync(capsOnly ?? `${here}vo/captions.json`, 'utf8'));
 for (const [i, c] of caps.entries()) await shot(`cap-${i}`, cap(c.text), true);
 await browser.close();
 console.log('ok');

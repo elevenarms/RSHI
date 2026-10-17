@@ -34,3 +34,7 @@ python3 scripts/compose.py                          # → out/sparkleteam-demo-6
 
 The edit (segment list, speeds, overlays, VO offsets) is the `SEGS` table in `scripts/compose.py`.
 Sped-up shots carry a corner tag with the factor; captions are burnt in from `vo/captions.json`.
+
+## Rebuild with the human voice-over
+
+`../video/.venv/bin/python scripts/compose.py` uses `vo-human/{A,B,C,D}.wav` when present (per clip, else the AI clip in `vo/`): padding is trimmed to 0.18 s, each section is fitted to its clip (voice never sped up), the remainder of 59.7 s is shared out, and captions are re-timed from `VO_RECORDING_SCRIPT.md`.
