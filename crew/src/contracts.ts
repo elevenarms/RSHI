@@ -296,6 +296,15 @@ export type CrewEvent = { readonly at: string; readonly runId: string } & (
       readonly purpose: EpisodePurpose;
       readonly pointsAvailable: number;
       readonly itemCount: number;
+      /** The level's items, for the studio's object inspector. */
+      readonly items?: readonly {
+        readonly itemId: string;
+        readonly kind: string;
+        readonly soils: readonly string[];
+        readonly points: number;
+        /** The human name, e.g. "Cereal bowl, porcelain, 16 cm". */
+        readonly label?: string;
+      }[];
     }
   | {
       readonly type: 'tool_call';
