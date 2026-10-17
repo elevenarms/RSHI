@@ -14,7 +14,9 @@
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { ARCHIVE_ROOT, archiveRun } from './archive.ts';
+import { ARCHIVE_ROOT, archiveRun, scanForSecrets } from './archive.ts';
+import { exportSft } from './sft.ts';
+import { gzipSync } from 'node:zlib';
 import { setCallLog, syncCallLog } from './calllog.ts';
 import { join } from 'node:path';
 import { loadEnvFile } from '@spotless/bench';
@@ -155,6 +157,31 @@ async function main(): Promise<void> {
   if (cmd === 'memory') {
     console.log(JSON.stringify(memory.stats()));
     for (const l of memory.lessons().slice(0, 30)) console.log(`(${l.confidence.toFixed(2)} +${l.support}/-${l.contradict}) [${l.tags.join(',')}] ${l.text}`);
+    return;
+  }
+  if (cmd === 'export-sft') {
+    // crew export-sft [--runs a,b] [--min-share 0.6] [--memory <dir>] [--out docs/crew/insights/sft]
+    const runs = (flags.get('runs') ?? '2026-10-17T20-49-49-evolve').split(',');
+    const mem = CrewMemory.open(flags.get('memory') ?? process.env['CREW_MEMORY_DIR'] ?? join(CREW_ROOT, 'memory-supervl'));
+    const kept = new Set(mem.genomes().filter((g) => ['baseline', 'accepted', 'champion'].includes(g.status)).map((g) => g.genome.id));
+    const minShare = Number(flags.get('min-share') ?? '0.6');
+    const out = flags.get('out') ?? join(REPO_ROOT, 'docs', 'crew', 'insights', 'sft');
+    const r = exportSft({ runDirs: runs.map((id) => (existsSync(join(RUNS_DIR, id)) ? join(RUNS_DIR, id) : join(ARCHIVE_ROOT, id))), keptGenomes: kept, minShare });
+    mkdirSync(out, { recursive: true });
+    const write = (name: string, lines: string[]): string => {
+      const text = `${lines.join('\n')}\n`;
+      scanForSecrets(text, name);
+      const big = text.length > 20e6;
+      writeFileSync(join(out, big ? `${name}.gz` : name), big ? gzipSync(text) : text);
+      return big ? `${name}.gz` : name;
+    };
+    const f1 = write('loader-sft.jsonl', r.textLines);
+    const f2 = write('loader-sft-tools.jsonl', r.toolsLines);
+    const mean = r.episodes.reduce((a, e) => a + e.share, 0) / Math.max(1, r.episodes.length);
+    const tokens = Math.round(r.chars / 4);
+    const readme = `# Loader SFT set (not uploaded; no fine-tuning job was started)\n\nFor Crusoe Serverless Fine-Tuning (LoRA SFT), target base model \`nvidia/nemotron-3.5-lightning-30b-a3b\`. Built by \`pnpm --filter @spotless/crew crew export-sft\` from the token-level call logs.\n\n- **Selection:** loader episodes of the training split (purposes train and eval; never exam or test-split episodes, so the held-out drills stay clean), not failed, share >= ${minShare}, played by a genome the team kept (${[...kept].join(', ')}).\n- **Runs:** ${runs.join(', ')}.\n- **Episodes:** ${r.episodes.length}, mean share **${mean.toFixed(3)}**; **examples:** ${r.textLines.length} (one per context segment: the full request before each fold of the conversation, plus the model's answer; every assistant turn appears in at least one example; where the harness only pruned an old picture rather than folding, consecutive examples overlap and repeat earlier assistant turns).\n- **Size:** about ${tokens.toLocaleString('en-US')} tokens (characters / 4) in \`${f1}\`.\n\nFiles:\n- \`${f1}\`: one \`{"messages": [...]}\` per line with roles system / user / assistant only, the format Crusoe's fine-tuning docs document. Tool calls are serialised as \`<tool_call>{"name":..., "arguments":...}</tool_call>\` in the assistant text, and tool results as \`<tool_result id=...>...</tool_result>\` in the following user turn.\n- \`${f2}\`: the same conversations in OpenAI tool format (\`tools\`, assistant \`tool_calls\`, \`tool\` messages), for a trainer that takes tool calls. The docs do not document this schema; check the API reference before using it.\n\nPictures are not included: the loader's renders appear as \`[png sha256:... bytes]\` notes, which suits the text-only Lightning model. Thinking was off for the loader, so the set has no reasoning traces.\n\nEpisodes:\n\n| run | episode | genome | drill | share | examples |\n|---|---|---|---|---|---|\n${r.episodes.map((e) => `| ${e.runId} | ${e.episodeKey} | ${e.genomeId} | ${e.taskId} | ${e.share.toFixed(3)} | ${e.examples} |`).join('\n')}\n`;
+    writeFileSync(join(out, 'README.md'), readme);
+    console.log(`episodes ${r.episodes.length} (mean share ${mean.toFixed(3)}), examples ${r.textLines.length}, ~${tokens} tokens -> ${out}`);
     return;
   }
   if (cmd === 'archive') {
