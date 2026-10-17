@@ -28,11 +28,11 @@ did not replicate; the headline is learned superstitions).
 | Key | Status | Where | Source |
 | --- | --- | --- | --- |
 | `FINDING_HEADLINE`, `FINDING_N`, `P_CLEAN_DOWN`, `P_CLEAN_UP`, `RESIDUE_DELTA`, `WATER_ML` | filled | Finding 1 block (hollow items mouth up vs down) | INSIGHTS.md "FINDING 1" |
-| `EXAM12_DELTA`, `EXAM12_CI`, `EXAM12_WINS` | filled (also hard-coded in the HTML) | "Exam and replication" block | 12-drill replication, REFRAME.md |
+| `EXAM12_DELTA`, `EXAM12_CI`, `EXAM12_WINS` | filled, final 24-pair numbers (also hard-coded in the HTML) | "Exam and replication" block | 12-drill replication, REFRAME.md (7db1088) |
 | `VIDEO_URL` | filled: `assets/video/sparkleteam.mp4` | Video button, teaser caption | launch video |
 | `SLIDES_URL` | filled | Slides button | deck |
 | `SFT_DATASET` | filled | "Next recursion" box (proposed fine-tune) | docs/crew/insights/sft/README.md (examples, episodes, mean score) once exported |
-| `INSIGHTS_ABLATIONS`, `INSIGHTS_TRANSFER`, `INSIGHTS_PHYSICS_MAP` | **pending** | "More from the Division" | INSIGHTS.md (ablation still running) |
+| `INSIGHTS_ABLATIONS`, `INSIGHTS_TRANSFER`, `INSIGHTS_PHYSICS_MAP` | filled | "More from the Division" | INSIGHTS.md (ablation still running) |
 | `STUDIO_URL` | **pending** | Studio replay button | hosted replay / recording |
 
 Edited directly in `index.html` (HTML comments mark them):
