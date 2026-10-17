@@ -44,29 +44,82 @@ const pause = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 const windows = new Map<string, number[]>();
 const chains = new Map<string, Promise<void>>();
 
-function rpm(): number {
+/** CREW_RPM, or a model's own from CREW_RPM_MODELS ("<model id or a part of it>=<rpm>,..."). */
+function rpm(model = ''): number {
+  for (const pair of (process.env['CREW_RPM_MODELS'] ?? '').split(',')) {
+    const [k, v] = pair.split('=');
+    if (k !== undefined && v !== undefined && k.trim() !== '' && model.includes(k.trim()) && Number(v) > 0) return Number(v);
+  }
   const n = Number(process.env['CREW_RPM'] ?? '25');
   return Number.isFinite(n) && n > 0 ? n : 25;
 }
 
-/** Waits until a request to `model` fits in the last minute's budget, then books it. */
+function maxInflight(): number {
+  const n = Number(process.env['CREW_MAX_INFLIGHT'] ?? '12');
+  return Number.isFinite(n) && n > 0 ? n : 12;
+}
+
+/**
+ * Waits until a request to `model` fits a true sliding 60 s window of CREW_RPM requests, then
+ * books it. Every model call of a run is made from this one process (shard processes run game
+ * servers only), so the budget is shared by every shard and episode.
+ */
 export function acquire(model: string): Promise<void> {
   const prev = chains.get(model) ?? Promise.resolve();
   const next = prev.then(async () => {
-    const limit = rpm();
+    const limit = rpm(model);
     for (;;) {
       const now = Date.now();
       const times = (windows.get(model) ?? []).filter((t) => now - t < 60_000);
+      windows.set(model, times);
       if (times.length < limit) {
         times.push(now);
-        windows.set(model, times);
         return;
       }
-      await pause(60_000 - (now - (times[0] as number)) + 50);
+      await pause(60_000 - (now - (times[0] as number)) + 20);
     }
   });
   chains.set(model, next.catch(() => undefined));
   return next;
+}
+
+/** At most CREW_MAX_INFLIGHT requests to one model at once (a concurrency cap of the endpoint). */
+const inflight = new Map<string, { n: number; waiting: (() => void)[] }>();
+async function enter(model: string): Promise<void> {
+  const slot = inflight.get(model) ?? { n: 0, waiting: [] };
+  inflight.set(model, slot);
+  while (slot.n >= maxInflight()) await new Promise<void>((r) => slot.waiting.push(r));
+  slot.n += 1;
+}
+function leave(model: string): void {
+  const slot = inflight.get(model);
+  if (slot === undefined) return;
+  slot.n = Math.max(0, slot.n - 1);
+  slot.waiting.shift()?.();
+}
+
+/** Requests in the last minute per model, and 429s since the last report. */
+const throttled = new Map<string, number>();
+let rateLog: ((line: string) => void) | null = null;
+let rateTimer: ReturnType<typeof setInterval> | null = null;
+/** Logs requests per minute per model every minute (to the bus). */
+export function setRateLog(log: ((line: string) => void) | null): void {
+  rateLog = log;
+  if (rateTimer !== null) clearInterval(rateTimer);
+  rateTimer = null;
+  if (log === null) return;
+  rateTimer = setInterval(() => {
+    const now = Date.now();
+    const parts: string[] = [];
+    for (const [model, times] of windows) {
+      const n = times.filter((t) => now - t < 60_000).length;
+      const t429 = throttled.get(model) ?? 0;
+      if (n > 0 || t429 > 0) parts.push(`${model.split('/').pop()}: ${n}/min of ${rpm(model)}, in flight ${inflight.get(model)?.n ?? 0}${t429 > 0 ? `, ${t429}x 429/503` : ''}`);
+    }
+    throttled.clear();
+    if (parts.length > 0) rateLog?.(`rate: ${parts.join(' | ')} (limit ${rpm()}/min, ${maxInflight()} in flight)`);
+  }, 60_000);
+  rateTimer.unref();
 }
 
 /** Totals per model, for reports. */
@@ -95,17 +148,30 @@ function apiKey(): string {
 
 /** Posts a chat completions body with rate limiting and retries; the reply JSON. */
 export async function crusoeChat(body: { model: string; [k: string]: unknown }, options: { timeoutMs?: number; maxRetries?: number; stream?: StreamTag } = {}): Promise<{ reply: any; ms: number }> {
-  if (process.env['CREW_FAKE'] === '1') return fakeChat(body);
+  if (process.env['CREW_FAKE'] === '1') {
+    // The fake goes through the same limiter, so dry runs exercise it.
+    await acquire(body.model);
+    await enter(body.model);
+    try {
+      return await fakeChat(body);
+    } finally {
+      leave(body.model);
+    }
+  }
   const streaming = options.stream !== undefined && process.env['CREW_STREAM'] !== '0';
   if (streaming) body = { ...body, stream: true, stream_options: { include_usage: true } };
   const key = apiKey();
   const maxRetries = options.maxRetries ?? 6;
+  // A 429 / 503 / 5xx / broken connection never ends a call before this much time has passed.
+  const transientBudgetMs = Number(process.env['CREW_RETRY_BUDGET_MS'] ?? '300000');
+  const firstTry = Date.now();
   const timeoutMs = options.timeoutMs ?? 5 * 60_000;
   const clean = (s: string): string => s.split(key).join('[key]');
   for (let attempt = 0; ; attempt++) {
     const cap = IMAGE_CAPS.get(body.model);
     if (cap !== undefined && Array.isArray(body['messages'])) body = { ...body, messages: capImages(body['messages'] as any[], cap) };
     await acquire(body.model);
+    await enter(body.model);
     const started = performance.now();
     let failure: ProviderError;
     let again = false;
@@ -119,7 +185,9 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
       });
       if (response.ok && streaming) {
         try {
-          return { reply: await readStream(response, body, options.stream as StreamTag), ms: Math.round(performance.now() - started) };
+          const reply = await readStream(response, body, options.stream as StreamTag);
+          leave(body.model);
+          return { reply, ms: Math.round(performance.now() - started) };
         } catch (error) {
           throw new StreamBroken(error instanceof Error ? error.message : String(error));
         }
@@ -127,7 +195,9 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
       const text = await response.text();
       if (response.ok) {
         try {
-          return { reply: JSON.parse(text), ms: Math.round(performance.now() - started) };
+          const reply = JSON.parse(text);
+          leave(body.model);
+          return { reply, ms: Math.round(performance.now() - started) };
         } catch {
           failure = new ProviderError('api', 'reply is not JSON', response.status);
           again = true;
@@ -154,7 +224,10 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
         if (ra !== null && Number.isFinite(Number(ra))) wait = Number(ra) * 1000;
       }
     } catch (error) {
-      if (error instanceof ProviderError) throw error;
+      if (error instanceof ProviderError) {
+        leave(body.model);
+        throw error;
+      }
       const name = error instanceof StreamBroken ? 'StreamBroken' : error instanceof Error ? error.name : '';
       failure =
         name === 'TimeoutError' || name === 'AbortError'
@@ -162,10 +235,14 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
           : new ProviderError('connection', clean(error instanceof Error ? error.message : String(error)));
       again = true;
     }
-    if (!again || attempt >= maxRetries) throw failure;
+    leave(body.model);
+    const transient = failure.kind === 'rate_limit' || failure.status === 503 || failure.kind === 'api' || failure.kind === 'connection' || failure.kind === 'timeout';
+    if (failure.kind === 'rate_limit' || failure.status === 503) throttled.set(body.model, (throttled.get(body.model) ?? 0) + 1);
+    const withinBudget = transient ? Date.now() - firstTry < transientBudgetMs : attempt < maxRetries;
+    if (!again || !withinBudget || (options.maxRetries === 0)) throw failure;
     tally(body.model, { in: 0, out: 0, cached: 0, retry: true });
-    const backoff = Math.min(60_000, 1500 * 2 ** attempt) * (0.7 + Math.random() * 0.6);
-    await pause(Math.min(90_000, wait ?? backoff));
+    const backoff = Math.min(30_000, 1000 * 2 ** Math.min(attempt, 5)) * (0.5 + Math.random());
+    await pause(Math.min(60_000, Math.max(wait ?? 0, backoff)));
   }
 }
 
@@ -580,8 +657,14 @@ export function loaderProvider(o: LoaderProviderOptions): ModelProvider {
 // ---------------------------------------------------------------------------------------------
 
 let fakeN = 0;
-function fakeChat(body: { model: string; [k: string]: unknown }): Promise<{ reply: any; ms: number }> {
+/** Most fake calls in flight at once (for tests of the limiter). */
+export const fakeStats = { inflight: 0, maxInflight: 0 };
+async function fakeChat(body: { model: string; [k: string]: unknown }): Promise<{ reply: any; ms: number }> {
   fakeN += 1;
+  fakeStats.inflight += 1;
+  fakeStats.maxInflight = Math.max(fakeStats.maxInflight, fakeStats.inflight);
+  await pause(Number(process.env['CREW_FAKE_MS'] ?? '0'));
+  fakeStats.inflight -= 1;
   const usage = { prompt_tokens: 100, completion_tokens: 20 };
   if (Array.isArray(body['tools'])) {
     return Promise.resolve({ ms: 1, reply: { model: body.model, usage, choices: [{ finish_reason: 'tool_calls', message: { content: 'fake loader: washing now', tool_calls: [{ id: `fake_${fakeN}`, type: 'function', function: { name: 'start_cycle', arguments: '{}' } }] } }] } });

@@ -19,7 +19,7 @@ import { loadEnvFile } from '@spotless/bench';
 import type { CrewEvent, Genome, TaskSpec } from './contracts.ts';
 import { CREW_PORT } from './contracts.ts';
 import { EventBus, eventLine, readEvents } from './bus.ts';
-import { defaultLoaderEffort, modelFor, setStreamSink, usageTotals } from './crusoe.ts';
+import { defaultLoaderEffort, modelFor, setRateLog, setStreamSink, usageTotals } from './crusoe.ts';
 import { emitMemory, evolve, MODELS } from './evolve.ts';
 import { exam } from './exam.ts';
 import { baselineGenome } from './genome.ts';
@@ -63,6 +63,7 @@ function newRun(mode: string): { runId: string; runDir: string; bus: EventBus } 
     if (line !== null) console.log(line);
   });
   setStreamSink((e) => bus.emit(e));
+  setRateLog((line) => bus.log(line));
   return { runId, runDir, bus };
 }
 
@@ -149,7 +150,7 @@ async function main(): Promise<void> {
     const startGen = resumeFrom?.generation ?? 0;
     // Practice of a resumed incumbent that has too few episodes: fresh seeds after its generation.
     const resumePractice = resume ? trainTasks(practice, 500 + 10 * startGen) : [];
-    const train = mode === 'evolve' ? [...(resume ? resumePractice : trainTasks(practice, 0)), ...Array.from({ length: generations }, (_, g) => trainTasks(validate, 1000 * (startGen + g + 1))).flat()] : [];
+    const train = mode === 'evolve' ? [...(resume ? resumePractice : trainTasks(practice, 0)), ...Array.from({ length: generations }, (_, g) => [...trainTasks(validate, 1000 * (startGen + g + 1)), ...trainTasks(validate, 1000 * (startGen + g + 1) + 500)]).flat()] : [];
     const test = withExam ? testTasks(examTasks, 0) : [];
     const game = await gameFor(tier, [...train, ...test]);
     // The exam's baseline is the stored one when memory has it (same id as the run that made it).

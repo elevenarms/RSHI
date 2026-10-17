@@ -96,3 +96,29 @@ describe('image caps', () => {
     expect(out[2].content[0].type).toBe('text');
   });
 });
+
+describe('rate limiter', () => {
+  it('holds a sliding window of CREW_RPM and at most CREW_MAX_INFLIGHT at once', async () => {
+    const { crusoeChat, fakeStats } = await import('./crusoe.ts');
+    process.env['CREW_FAKE'] = '1';
+    process.env['CREW_RPM'] = '6';
+    process.env['CREW_MAX_INFLIGHT'] = '2';
+    process.env['CREW_FAKE_MS'] = '30';
+    let done = 0;
+    const calls = Array.from({ length: 10 }, () => crusoeChat({ model: 'limiter-test', messages: [] }).then(() => (done += 1)));
+    await new Promise((r) => setTimeout(r, 400));
+    expect(done).toBe(6);
+    expect(fakeStats.maxInflight).toBeLessThanOrEqual(2);
+    void calls;
+    delete process.env['CREW_FAKE'];
+    delete process.env['CREW_FAKE_MS'];
+  });
+  it('voids a comparison with too few valid pairs and ignores invalid episodes', () => {
+    const s = (taskId: string, share: number, failed = false): EpisodeSummary => ({ taskId, share, failed, stopped: failed ? 'provider_error' : 'start_cycle' }) as EpisodeSummary;
+    const v = decide({ candidateId: 'c', incumbentId: 'i', proposalTitle: 't', incumbent: [s('a', 0.5), s('b', 0.5, true), s('c', 0.5, true)], candidate: [s('a', 0.9), s('b', 0.5), s('c', 0.5)] });
+    expect(v.void).toBe(true);
+    const ok = decide({ candidateId: 'c', incumbentId: 'i', proposalTitle: 't', incumbent: [s('a', 0.5), s('b', 0.5), s('c', 0.5), s('d', 0.1, true)], candidate: [s('a', 0.6), s('b', 0.6), s('c', 0.6), s('d', 0)], margin: 0.03 });
+    expect(ok.accepted).toBe(true);
+    expect(ok.perTask).toHaveLength(3);
+  });
+});

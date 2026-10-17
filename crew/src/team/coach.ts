@@ -48,7 +48,7 @@ export async function propose(o: {
     `Recent episodes:\n${o.recent.slice(-10).map(brief).join('\n')}`,
     `Lessons in memory (best first):\n${o.lessons.slice(0, 15).map((l) => `- [${l.id}] (conf ${l.confidence.toFixed(2)}, +${l.support}/-${l.contradict}) ${l.text}`).join('\n') || '(none yet)'}`,
     `Placement statistics (kind, rack, stance: clean/n):\n${[...o.stats].sort((a, b) => b.n - a.n).slice(0, 25).map((s) => `${s.kind} ${s.rack} ${s.stance}: ${s.clean}/${s.n}`).join('\n') || '(none)'}`,
-    `Past decisions:\n${o.decisions.map((d) => `- "${d.proposalTitle}": ${d.accepted ? 'ACCEPTED' : 'REJECTED'} (${d.delta >= 0 ? '+' : ''}${d.delta.toFixed(3)})`).join('\n') || '(none)'}`,
+    `Past decisions:\n${o.decisions.map((d) => (d.void === true ? `- "${d.proposalTitle}": VOID (not tested: infrastructure failures; may be proposed again)` : `- "${d.proposalTitle}": ${d.accepted ? 'ACCEPTED' : 'REJECTED'} (${d.delta >= 0 ? '+' : ''}${d.delta.toFixed(3)})`)).join('\n') || '(none)'}`,
     `Propose exactly ${o.count} different proposal(s), each with 1-4 edits.`,
   ].join('\n\n');
   try {

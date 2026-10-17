@@ -225,6 +225,11 @@ export interface Decision {
   readonly perTask: readonly { readonly taskId: string; readonly incumbent: number; readonly candidate: number }[];
   readonly reason: string;
   readonly at: string;
+  /**
+   * The comparison did not count (too few valid paired tasks: infrastructure failures, never the
+   * agent's). A void decision says nothing about the idea; the Coach may propose it again.
+   */
+  readonly void?: boolean;
 }
 
 /** The memory system (memory/index.ts implements it). Every method is synchronous over files. */

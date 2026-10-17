@@ -305,7 +305,8 @@ export async function runTask(o: RunTaskOptions): Promise<EpisodeSummary> {
   o.game.release(shard);
   bus?.emit({ type: 'episode_finished', summary });
   try {
-    o.memory?.recordEpisode(summary);
+    // An invalid episode (infrastructure) is not kept: it would teach nothing true.
+    if (!summary.failed) o.memory?.recordEpisode(summary);
   } catch (error) {
     bus?.log(`memory.recordEpisode: ${String(error)}`, 'warn');
   }

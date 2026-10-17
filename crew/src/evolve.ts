@@ -9,7 +9,7 @@ import type { EpisodeSummary, Genome, Role, TaskSpec } from './contracts.ts';
 import type { CrewMemory } from './memory/index.ts';
 import type { EventBus } from './bus.ts';
 import { modelFor } from './crusoe.ts';
-import { decide, DEFAULT_MARGIN } from './gatekeeper.ts';
+import { decide, DEFAULT_MARGIN, isInvalid } from './gatekeeper.ts';
 import { applyEdits, diffGenomes } from './genome.ts';
 import { CONCURRENCY, type GamePool, finalImages, pool, runTask, type Tier } from './runner.ts';
 import { critique } from './team/critic.ts';
@@ -109,21 +109,41 @@ export async function evolve(o: EvolveOptions, baseline: Genome): Promise<Genome
       continue;
     }
 
-    const valTasks = o.tasksFor(o.validate, 1000 * gen);
-    bus.emit({ type: 'phase', phase: 'evaluate', generation: gen, detail: `${incumbent.id} vs ${candidates.map((c) => c.genome.id).join(', ')} on ${valTasks.map((t) => t.id).join(', ')}` });
-    const jobs = [{ genome: incumbent, title: 'incumbent' }, ...candidates].flatMap((c) => valTasks.map((task) => ({ c, task })));
-    const results = await pool(jobs, n, (j) => runTask({ game, task: j.task, genome: j.c.genome, memory, bus, purpose: 'eval', tier: o.tier, runId: o.runId, runDir: o.runDir }));
-    const of = (id: string): EpisodeSummary[] => results.filter((s) => s.genomeId === id);
+    const everyone = [{ genome: incumbent, title: 'incumbent' }, ...candidates];
+    /** Plays the tasks with every genome; an invalid episode (infrastructure) is played again up to twice. */
+    const evaluate = async (tasks: TaskSpec[]): Promise<EpisodeSummary[]> => {
+      bus.emit({ type: 'phase', phase: 'evaluate', generation: gen, detail: `${incumbent.id} vs ${candidates.map((c) => c.genome.id).join(', ')} on ${tasks.map((t) => t.id).join(', ')}` });
+      const jobs = everyone.flatMap((c) => tasks.map((task) => ({ c, task })));
+      const out = await pool(jobs, n, async (j) => {
+        let s = await runTask({ game, task: j.task, genome: j.c.genome, memory, bus, purpose: 'eval', tier: o.tier, runId: o.runId, runDir: o.runDir });
+        for (let again = 1; again <= 2 && isInvalid(s); again++) {
+          bus.log(`${s.episodeKey} is invalid (${s.stopped.slice(0, 80)}); playing it again (${again}/2)`, 'warn');
+          s = await runTask({ game, task: j.task, genome: j.c.genome, memory, bus, purpose: 'eval', tier: o.tier, runId: o.runId, runDir: o.runDir });
+        }
+        return s;
+      });
+      return out;
+    };
+    let results = await evaluate(o.tasksFor(o.validate, 1000 * gen));
+    const decideAll = (rs: EpisodeSummary[]) =>
+      candidates.map((c) => ({ c, d: decide({ candidateId: c.genome.id, incumbentId: incumbent.id, proposalTitle: c.title, incumbent: rs.filter((s) => s.genomeId === incumbent.id), candidate: rs.filter((s) => s.genomeId === c.genome.id), margin: o.margin ?? DEFAULT_MARGIN }) }));
+    let verdicts = decideAll(results);
+    if (verdicts.some((v) => v.d.void === true)) {
+      bus.log(`generation ${gen}: a comparison was void; evaluating again on reserve tasks`, 'warn');
+      results = [...results, ...(await evaluate(o.tasksFor(o.validate, 1000 * gen + 500)))];
+      verdicts = decideAll(results);
+    }
+    const of = (id: string): EpisodeSummary[] => results.filter((s) => s.genomeId === id && !isInvalid(s));
     const incumbentRuns = of(incumbent.id);
 
     let best: { genome: Genome; delta: number } | null = null;
-    for (const c of candidates) {
-      const d = decide({ candidateId: c.genome.id, incumbentId: incumbent.id, proposalTitle: c.title, incumbent: incumbentRuns, candidate: of(c.genome.id), margin: o.margin ?? DEFAULT_MARGIN });
+    for (const { c, d } of verdicts) {
       memory.recordDecision(d);
-      memory.saveGenome(c.genome, d.accepted ? 'accepted' : 'rejected');
+      const status = d.accepted ? 'accepted' : d.void === true ? 'candidate' : 'rejected';
+      memory.saveGenome(c.genome, status);
       bus.emit({ type: 'decision', decision: d });
-      bus.emit({ type: 'genome', genome: c.genome, status: d.accepted ? 'accepted' : 'rejected' });
-      bus.emit({ type: 'message', from: 'gatekeeper', to: 'all', kind: 'verdict', title: `${c.title}: ${d.accepted ? 'ACCEPTED' : 'rejected'}`, body: d.reason });
+      bus.emit({ type: 'genome', genome: c.genome, status });
+      bus.emit({ type: 'message', from: 'gatekeeper', to: 'all', kind: 'verdict', title: `${c.title}: ${d.accepted ? 'ACCEPTED' : d.void === true ? 'VOID' : 'rejected'}`, body: d.reason });
       if (d.accepted && (best === null || d.delta > best.delta)) best = { genome: c.genome, delta: d.delta };
     }
     if (best !== null) {
