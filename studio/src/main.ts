@@ -4,6 +4,7 @@ import type { CrewEvent, Role } from '@spotless/crew/contracts';
 import { diffGenomes, wordDiff } from './diff.ts';
 import { championId, evolution, initialState, lineage, liveEpisodes, reduce, ROLE_LIST, type EpisodeView, type MessageView, type StudioState } from './state.ts';
 import { startSource } from './source.ts';
+import { tokenPanel } from './tokens.ts';
 
 const $ = <T extends Element = HTMLElement>(sel: string): T => document.querySelector(sel) as T;
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -13,21 +14,30 @@ const SVG = 'http://www.w3.org/2000/svg';
 const COLOR: Record<Role, string> = {
   planner: 'var(--planner)', loader: 'var(--loader)', critic: 'var(--critic)', coach: 'var(--coach)', gatekeeper: 'var(--gatekeeper)', librarian: 'var(--librarian)',
 };
-const HEX: Record<Role, string> = { planner: '#6d8bff', loader: '#2de2ff', critic: '#ff6b8b', coach: '#ffb43d', gatekeeper: '#b98cff', librarian: '#c6f24e' };
+const HEX: Record<Role, string> = { planner: '#2f5bea', loader: '#0a8fb0', critic: '#d4386c', coach: '#7a3fd1', gatekeeper: '#111111', librarian: '#1f8a5a' };
 
 let state: StudioState = initialState();
 let dirty = true;
 const pendingPackets: MessageView[] = [];
 let lastExamSeq = 0;
 
+const tokens = tokenPanel($('#waterfall'), $('#meter'));
+
 const source = startSource(
   (e) => apply(e, true),
   (es) => {
     for (const e of es) apply(e, false);
+    // A replay that starts mid-run: pour the most recent tokens so the waterfall is not empty.
+    for (const e of es.filter((x) => x.type === 'stream').slice(-300)) if (e.type === 'stream') tokens.push(e);
   },
 );
 
 function apply(e: CrewEvent, animate: boolean): void {
+  // Token streams go straight to the waterfall (many small events; the state fold ignores them).
+  if (e.type === 'stream') {
+    if (animate) tokens.push(e);
+    return;
+  }
   state = reduce(state, e);
   dirty = true;
   if (animate && e.type === 'message') {
@@ -81,7 +91,13 @@ function renderPhases(s: StudioState): void {
     return `<div class="step ${cls}">${label}</div>`;
   };
   let h = `<div class="pgroup">${step('baseline', 0, 'baseline')}</div>`;
-  for (let g = 1; g <= gens; g++) h += `<div class="pgroup"><div class="gl">GEN ${g}</div>${STEPS.map((p) => step(p, g, p)).join('')}</div>`;
+  // Many generations: only the current one (or the next to come) is spelled out, the others are one chip each.
+  const curGen = s.phase && STEPS.includes(s.phase.phase as (typeof STEPS)[number]) ? s.phase.generation : null;
+  const open = gens <= 2 ? null : curGen ?? Math.min(gens, Math.max(1, ...s.phaseHistory.map((p) => p.generation)) + (s.phase?.phase === 'baseline' ? 0 : 1));
+  for (let g = 1; g <= gens; g++) {
+    if (open === null || g === open) h += `<div class="pgroup"><div class="gl">GEN ${g}</div>${STEPS.map((p) => step(p, g, p)).join('')}</div>`;
+    else h += `<div class="pgroup"><div class="step ${seen.has(`evaluate:${g}`) ? 'done' : ''}">G${g}</div></div>`;
+  }
   h += `<div class="pgroup">${step('exam', 0, 'exam')}${step('done', 0, 'done')}</div>`;
   h += `<div class="pdetail">${esc(s.phase?.detail ?? 'Waiting for the crew…')}</div>`;
   $('#phases').innerHTML = h;
@@ -113,9 +129,9 @@ function buildGraph(): void {
     <radialGradient id="coreGrad"><stop offset="0" stop-color="rgba(45,226,255,.25)"/><stop offset="1" stop-color="rgba(45,226,255,0)"/></radialGradient>
     <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-  <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(120,170,255,.08)" stroke-dasharray="2 6"/>
-  <circle cx="${CX}" cy="${CY}" r="80" fill="url(#coreGrad)"/>
-  <line x1="${CX + R + 40}" y1="${CY}" x2="500" y2="${CY}" stroke="var(--loader)" stroke-width="2" stroke-dasharray="4 4" opacity=".7"><animate attributeName="stroke-dashoffset" from="16" to="0" dur=".8s" repeatCount="indefinite"/></line>
+  <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#000" stroke-opacity=".18" stroke-dasharray="2 6"/>
+  <circle cx="${CX}" cy="${CY}" r="62" fill="#fff" stroke="#000" stroke-width="2"/>
+  <line x1="${CX + R + 40}" y1="${CY}" x2="500" y2="${CY}" stroke="#000" stroke-width="2" stroke-dasharray="4 4" opacity=".5"><animate attributeName="stroke-dashoffset" from="16" to="0" dur=".8s" repeatCount="indefinite"/></line>
   <g id="edges"></g><g id="nodes"></g><g id="packets"></g>
   <text id="core-gen" class="core-gen" x="${CX}" y="${CY + 8}" text-anchor="middle">G0</text>
   <text id="core-sub" class="core-sub" x="${CX}" y="${CY + 32}" text-anchor="middle">waiting</text>`;
@@ -137,11 +153,11 @@ function buildGraph(): void {
     g.setAttribute('class', 'node idle');
     const below = y > CY + 10;
     const ly = below ? 54 : -60;
-    g.innerHTML = `<circle class="halo" cx="${x}" cy="${y}" r="44" fill="${HEX[r]}" filter="url(#glow)" opacity="0"/>
+    g.innerHTML = `<circle class="halo" cx="${x}" cy="${y}" r="46" fill="${HEX[r]}" opacity="0"/>
       <circle class="node-ring" cx="${x}" cy="${y}" r="34" stroke="${HEX[r]}"/>
       <circle class="spinner" cx="${x}" cy="${y}" r="40" fill="none" stroke="${HEX[r]}" stroke-width="2" stroke-dasharray="20 230" stroke-linecap="round"/>
       ${icon(r, x, y)}
-      <text class="node-name" x="${x}" y="${y + ly}" text-anchor="middle" style="fill:${HEX[r]}">${r}</text>
+      <text class="node-name" x="${x}" y="${y + ly}" text-anchor="middle">${r}</text>
       <text class="node-status" x="${x}" y="${y + ly + 15}" text-anchor="middle">idle</text>
       <text class="node-label" x="${x}" y="${y + ly + (below ? 30 : -16)}" text-anchor="middle"></text>`;
     ng.appendChild(g);
@@ -192,7 +208,7 @@ function launchPackets(): void {
       const { c } = curve(a, b);
       const el = document.createElementNS(SVG, 'g');
       const col = HEX[m.from];
-      el.innerHTML = `<circle r="13" fill="${col}" opacity=".25" filter="url(#glow)"/><circle r="6" fill="#fff" filter="url(#glow)"/><circle r="4" fill="${col}"/>`;
+      el.innerHTML = `<circle r="8" fill="#fff" stroke="#000" stroke-width="2"/><circle r="4.5" fill="${col}"/>`;
       layer.appendChild(el);
       packets.push({ from: m.from, to, t0: performance.now(), dur: 1100, el, path: { a, c, b } });
       edgeEls.get(edgeKey(m.from, to))?.classList.add('hot');
@@ -218,7 +234,7 @@ function animatePackets(now: number): void {
         ed?.removeAttribute('style');
       }
       const node = nodeEls.get(p.to)?.querySelector('.node-ring');
-      node?.animate([{ strokeWidth: 8 }, { strokeWidth: 2.5 }], { duration: 500 });
+      node?.animate([{ strokeWidth: 8 }, { strokeWidth: 3 }], { duration: 500 });
     }
   }
 }
@@ -227,13 +243,17 @@ function animatePackets(now: number): void {
 // chatter
 // ---------------------------------------------------------------------------------------------
 
-let lastMsgId = -1;
+let lastMsgId = '';
 function renderFeed(s: StudioState): void {
   const last = s.messages[s.messages.length - 1];
-  if (!last || last.id === lastMsgId) return;
-  lastMsgId = last.id;
+  // Who is busy right now (so the panel is never empty, e.g. during baseline practice).
+  const busy = ROLE_LIST.filter((r) => s.agents[r].status === 'thinking' || s.agents[r].status === 'acting');
+  const sig = `${last?.id}|${busy.map((r) => `${r}:${s.agents[r].status}:${s.agents[r].label}`).join()}`;
+  if (sig === lastMsgId) return;
+  lastMsgId = sig;
   const list = s.messages.slice(-14).reverse();
-  $('#feed').innerHTML = list
+  const st = busy.map((r) => `<div class="agst" style="--c:${COLOR[r]}"><b>${r}</b><span>${s.agents[r].status}</span><i>${esc(s.agents[r].label)}</i></div>`).join('');
+  $('#feed').innerHTML = st + list
     .map((m) => {
       const v = m.kind === 'verdict' ? (/^REJECT/.test(m.title) ? 'verdict-no' : /^ACCEPT|^Exam/.test(m.title) ? 'verdict-ok' : '') : '';
       return `<div class="msg ${v}" style="--c:${COLOR[m.from]}"><div class="h"><b>${m.from}</b> → ${m.to}<span class="kind">${m.kind}</span></div>
@@ -275,6 +295,9 @@ function renderLive(s: StudioState): void {
       frame.src = e.watchUrl;
       frame.setAttribute('allow', 'autoplay');
       const ov = document.createElement('div');
+      ov.className = 'ov';
+      el.classList.add('loading');
+      frame.addEventListener('load', () => setTimeout(() => el.classList.remove('loading'), 2500));
       el.append(frame, ov);
       el.onclick = () => { userFocus = e.key; dirty = true; };
       stage.appendChild(el);
@@ -285,10 +308,12 @@ function renderLive(s: StudioState): void {
     const idx = others.indexOf(e);
     const rect = big ? { x: 0, y: 0, w: W, h: bigH } : { x: idx * (thumbW + gap), y: bigH + gap, w: thumbW, h: thumbH };
     Object.assign(c.el.style, { left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px` });
-    c.el.className = `card ${big ? 'big' : 'small'} ${e.finishedAt ? 'leaving' : ''}`.replace('leaving', big ? '' : e.finishedAt ? 'leaving' : '');
-    // The page renders at the big size; thumbnails are scaled down copies.
+    const loading = c.el.classList.contains('loading');
+    c.el.className = `card ${big ? 'big' : 'small'} ${!big && e.finishedAt ? 'leaving' : ''} ${loading ? 'loading' : ''}`;
+    // The page renders at the big size (below the card's header strip); thumbnails are scaled down copies.
     const scale = rect.w / W;
-    Object.assign(c.frame.style, { width: `${W}px`, height: `${bigH}px`, transform: `scale(${scale})` });
+    const HDR = 46;
+    Object.assign(c.frame.style, { width: `${W}px`, height: `${bigH - HDR}px`, top: big ? `${HDR}px` : '0px', transform: `scale(${scale})` });
     const sig = `${big}|${e.stream.length}|${e.finishedAt}|${e.wash}`;
     if (sig !== c.sig) {
       c.sig = sig;
@@ -308,7 +333,7 @@ function renderLive(s: StudioState): void {
 function overlay(e: EpisodeView): string {
   const tools = e.stream.filter((x) => x.type === 'tool').slice(-4);
   const sum = e.summary;
-  const sc = sum ? (sum.share >= 0.75 ? 'var(--good)' : sum.share >= 0.55 ? 'var(--coach)' : 'var(--bad)') : '';
+  const sc = sum ? (sum.share >= 0.75 ? 'var(--good)' : sum.share >= 0.55 ? 'var(--ink)' : 'var(--bad)') : '';
   return `<div class="ov-top"><span class="badge b-${e.purpose}">${e.purpose}</span><span class="task">${esc(e.taskTitle)}</span>
       <span class="ov-meta">genome <b>${esc(e.genomeId)}</b> · ${e.itemCount} items · ${e.pointsAvailable} pts</span></div>
     <div class="ticker">${tools
@@ -364,7 +389,7 @@ function renderEvolution(s: StudioState): void {
   const n = Math.max(pts.length, (s.run?.generations ?? 2) + 1);
   const X = (i: number): number => L + ((W - L - Rr) * (i + 0.5)) / n;
   const Y = (v: number): number => T + (H - T - B) * (1 - (v - lo) / (hi - lo || 1));
-  let h = `<defs><linearGradient id="champGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(45,226,255,.28)"/><stop offset="1" stop-color="rgba(45,226,255,0)"/></linearGradient></defs>`;
+  let h = `<defs><linearGradient id="champGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(0,0,0,.10)"/><stop offset="1" stop-color="rgba(0,0,0,0)"/></linearGradient></defs>`;
   for (let v = lo; v <= hi + 1e-9; v += 0.1) h += `<line class="axis" x1="${L}" x2="${W - Rr}" y1="${Y(v)}" y2="${Y(v)}"/><text class="axis-t" x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${Math.round(v * 100)}%</text>`;
   for (let i = 0; i < n; i++) h += `<text class="axis-t" x="${X(i)}" y="${H - 12}" text-anchor="middle">${i === 0 ? 'BASE' : `G${pts[i]?.generation ?? i}`}</text>`;
   if (pts.length) {
@@ -373,7 +398,7 @@ function renderEvolution(s: StudioState): void {
     const last = pts[pts.length - 1]!;
     d += ` H${X(pts.length - 1) + 30}`;
     h += `<path class="champ-area" d="${d} V${H - B} H${X(0)} Z"/><path class="champ-line" d="${d}"/>`;
-    h += `<circle cx="${X(0)}" cy="${Y(pts[0]!.champion)}" r="6" fill="var(--loader)"/>
+    h += `<circle cx="${X(0)}" cy="${Y(pts[0]!.champion)}" r="6" fill="var(--ink)"/>
       <text class="delta-t" x="${X(0)}" y="${Y(pts[0]!.champion) + 24}" text-anchor="middle" fill="var(--dim)">${pct(pts[0]!.champion)}</text>`;
     for (const p of pts.slice(1)) {
       const col = p.accepted ? 'var(--good)' : 'var(--bad)';
@@ -382,12 +407,12 @@ function renderEvolution(s: StudioState): void {
       const up = (p.candidate ?? 0) >= p.champion - 0.001;
       h += `<g><title>${esc(p.title)}\n${esc(p.reason)}</title>
         <line x1="${x}" x2="${x}" y1="${Y(pts[p.index - 1]!.champion)}" y2="${y}" stroke="${col}" stroke-dasharray="3 3" opacity=".6"/>
-        <circle class="cand" cx="${x}" cy="${y}" r="10" fill="${col}" fill-opacity=".25" stroke="${col}"/>
+        <circle class="cand" cx="${x}" cy="${y}" r="11" fill="#fff" stroke="${col}"/>
         <text x="${x}" y="${y + 4.5}" text-anchor="middle" font-size="13" font-weight="800" fill="${col}">${p.accepted ? '✓' : '✕'}</text>
         <text class="delta-t" x="${x}" y="${up ? y - 18 : y + 28}" text-anchor="middle" fill="${col}">${p.delta >= 0 ? '+' : '−'}${Math.abs(p.delta * 100).toFixed(1)}</text>
         <text class="cand-t" x="${Math.min(x, W - 140)}" y="${up ? y - 36 : y + 46}" text-anchor="middle">${esc(p.title.length > 30 ? `${p.title.slice(0, 29)}…` : p.title)}</text></g>`;
     }
-    h += `<text class="delta-t" x="${W - Rr}" y="${Y(last.champion) - 10}" text-anchor="end" fill="var(--loader)">${pct(last.champion)}</text>`;
+    h += `<text class="delta-t" x="${W - Rr}" y="${Y(last.champion) - 10}" text-anchor="end" fill="var(--ink)">${pct(last.champion)}</text>`;
   } else h += `<text class="axis-t" x="${W / 2}" y="${H / 2}" text-anchor="middle">waiting for the baseline score…</text>`;
   $('#chart').innerHTML = h;
   renderLineage(s);
@@ -403,7 +428,7 @@ function renderLineage(s: StudioState): void {
   const colW = maxD > 0 ? (W - NW - 10) / maxD : 0;
   const rowH = Math.min(44, (130 - NH) / Math.max(1, rows - 1));
   const P = new Map(nodes.map((n) => [n.id, { x: 4 + n.depth * colW, y: 10 + n.row * rowH }]));
-  const col = (st: string): string => (st === 'champion' ? 'var(--gold)' : st === 'accepted' ? 'var(--good)' : st === 'rejected' ? 'var(--bad)' : st === 'candidate' ? 'var(--coach)' : 'var(--loader)');
+  const col = (st: string): string => (st === 'champion' ? 'var(--ink)' : st === 'accepted' ? 'var(--good)' : st === 'rejected' ? 'var(--bad)' : st === 'candidate' ? 'var(--warn)' : 'var(--ink)');
   let h = '';
   for (const n of nodes) {
     const p = P.get(n.id)!;
@@ -412,7 +437,7 @@ function renderLineage(s: StudioState): void {
   }
   for (const n of nodes) {
     const p = P.get(n.id)!;
-    h += `<g class="gnode" data-id="${esc(n.id)}"><rect x="${p.x}" y="${p.y}" width="${NW}" height="${NH}" rx="8" stroke="${col(n.status)}" ${n.status === 'champion' ? 'filter="url(#glowL)"' : ''}/>
+    h += `<g class="gnode" data-id="${esc(n.id)}"><rect class="${n.status}" x="${p.x}" y="${p.y}" width="${NW}" height="${NH}" rx="2" stroke="${col(n.status)}"/>
       <text x="${p.x + 10}" y="${p.y + 19}">${n.status === 'champion' ? '★ ' : n.status === 'rejected' ? '✕ ' : ''}${esc(n.id.length > 15 ? n.id.slice(0, 15) : n.id)}</text></g>`;
   }
   box.innerHTML = `<div class="lin-hint">LINEAGE · click a genome for its diff</div><svg viewBox="0 0 ${W} 138"><defs><filter id="glowL"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>${h}</svg>`;
@@ -451,7 +476,7 @@ function renderMemory(s: StudioState): void {
   const m = s.memory;
   if (!m || m.at === memAt) return;
   memAt = m.at;
-  const counts = Object.entries(m.stats).map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join('');
+  const counts = Object.entries(m.stats).map(([k, v]) => `<div><b>${v}</b><span>${k.replace(/([A-Z])/g, " $1")}</span></div>`).join('');
   const lessons = m.topLessons
     .slice(0, 6)
     .map((l) => `<div class="lesson"><div>${esc(l.text)}</div><div><div class="bar"><i style="width:${Math.round(l.confidence * 100)}%"></i></div><div class="ev">${l.confidence.toFixed(2)} · +${l.support}/−${l.contradict}</div></div></div>`)
@@ -470,10 +495,9 @@ function renderMemory(s: StudioState): void {
   const cell = (k: string, c: string): string => {
     const hit = ps.filter((p) => p.kind === k && `${p.rack.replace('_rack', '').replace('cutlery_basket', 'basket')}·${p.stance.replace('mouth_', 'm.').replace('tilted_', '∠')}` === c);
     const n = hit.reduce((a, p) => a + p.n, 0);
-    if (!n) return '<td style="background:rgba(255,255,255,.03)"></td>';
+    if (!n) return '<td class="none"></td>';
     const rate = hit.reduce((a, p) => a + p.clean, 0) / n;
-    const hue = Math.round(rate * 140);
-    return `<td style="background:hsl(${hue} 85% ${45 + rate * 10}%)" title="${k} ${c}: ${Math.round(rate * 100)}% of ${n}">${Math.round(rate * 100)}</td>`;
+    return `<td style="background:${rate >= 0.67 ? 'var(--good)' : rate > 0.33 ? 'var(--warn)' : 'var(--bad)'}" title="${k} ${c}: ${Math.round(rate * 100)}% of ${n}">${Math.round(rate * 100)}</td>`;
   };
   const heat = kinds.length
     ? `<div class="heat"><table><thead><tr><th></th>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${kinds
@@ -548,7 +572,7 @@ function sparks(cv: HTMLCanvasElement): void {
   if (!ctx) return;
   cv.width = innerWidth;
   cv.height = innerHeight;
-  const cols = ['#34f5a0', '#2de2ff', '#ffd66b', '#ffffff'];
+  const cols = ['#0f9d58', '#111111', '#0f9d58', '#d93025'];
   const ps = Array.from({ length: 220 }, () => {
     const a = Math.random() * Math.PI * 2;
     const v = 3 + Math.random() * 9;
@@ -558,7 +582,7 @@ function sparks(cv: HTMLCanvasElement): void {
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     ctx.fillRect(0, 0, cv.width, cv.height);
-    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalCompositeOperation = 'source-over';
     let alive = 0;
     for (const p of ps) {
       if (p.life <= 0) continue;
@@ -597,7 +621,6 @@ function frame(now: number): void {
     renderGraph(state);
     renderFeed(state);
     renderLive(state);
-    renderStream(state);
     renderEvolution(state);
     renderMemory(state);
     renderConsole(state);
@@ -606,3 +629,4 @@ function frame(now: number): void {
 }
 requestAnimationFrame(frame);
 void lastExamSeq;
+void renderStream;

@@ -517,8 +517,70 @@ export function fakeRun(opts: FakeRunOptions = {}): CrewEvent[] {
   emit(clock, { type: 'phase', phase: 'done', generation: 2, detail: `Champion ${incumbent.id}` });
   for (const r of ['planner', 'loader', 'critic', 'coach', 'gatekeeper', 'librarian'] as const) status(clock, r, 'idle', '');
   log(clock, 'run complete');
+  addStreams(events, rand);
   events.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
   return events;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Token streams: every model turn is preceded by its tokens, as the real crew streams them
+// (reasoning first, then the visible answer, then the arguments of each tool call), in batches
+// of about 100 ms.
+// ---------------------------------------------------------------------------------------------
+
+const REASONING: Record<string, readonly string[]> = {
+  loader: [
+    'The level card lists the items with their soils. Dried porridge needs the strongest jets, so the bowl goes mouth down. ',
+    'Checking the brief: mugs and tumblers only wash clean mouth down; upright they fill with water. ',
+    'The lower rack tines are up, plates should face the centre spray arm. Leave a gap so the jets reach the gravy. ',
+    'That placement was refused, the rim collides with the plate behind it. Try one slot to the right, or move it to the upper rack. ',
+    'Before start_cycle: check_load, read it. If an arm is stopped by a handle, fix that first. ',
+    'Cutlery handles down except knives. Spread them out so spoons do not nest. ',
+  ],
+  planner: ['Group by rack: heavy pans and plates below, bowls and glasses on top, cutlery last. Watch the tall items against the upper arm. '],
+  critic: ['Comparing the outcomes with the placements. Items that held water were all on their side or mouth up. The pan in the corner came out clean. '],
+  coach: ['Looking across the decisions: the last accepted change added structure before play. The failures cluster on preflight; the loader starts washes with a blocked arm. A mandatory check should help without costing much. '],
+};
+
+function addStreams(events: CrewEvent[], rand: () => number): void {
+  const run = events.find((e) => e.type === 'run_started') as Extract<CrewEvent, { type: 'run_started' }> | undefined;
+  const runId = run?.runId ?? '';
+  const out: CrewEvent[] = [];
+  let n = 0;
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i]!;
+    if (e.type !== 'model_turn') continue;
+    const end = Date.parse(e.at);
+    const ms = Math.max(1200, Math.min(e.ms, 6000));
+    const model = run?.models[e.role] ?? 'model';
+    const streamId = `st-${++n}`;
+    const pool = REASONING[e.role] ?? REASONING['loader']!;
+    let reasoning = pool[Math.floor(rand() * pool.length)]!;
+    if (e.role !== 'loader' || rand() < 0.5) reasoning += pool[Math.floor(rand() * pool.length)]!;
+    // Tool arguments: the next tool calls of this episode with the names the turn asked for.
+    const args: string[] = [];
+    for (const name of e.toolCalls) {
+      const tc = events.slice(i + 1).find((x) => x.type === 'tool_call' && x.episodeKey === e.episodeKey && x.name === name) as Extract<CrewEvent, { type: 'tool_call' }> | undefined;
+      args.push(`${args.length ? '\n' : ''}${name} ${JSON.stringify(tc?.args ?? {})}`);
+    }
+    const parts: { channel: 'reasoning' | 'content' | 'tool_args'; text: string }[] = [
+      { channel: 'reasoning', text: reasoning },
+      ...(e.text ? [{ channel: 'content' as const, text: `${e.text} ` }] : []),
+      ...args.map((a) => ({ channel: 'tool_args' as const, text: a })),
+    ];
+    const total = parts.reduce((a, p) => a + p.text.length, 0);
+    const steps = Math.max(4, Math.round(ms / 100));
+    const per = Math.max(3, Math.ceil(total / steps));
+    let t = end - ms;
+    for (const p of parts) {
+      for (let k = 0; k < p.text.length; k += per) {
+        out.push({ type: 'stream', streamId, role: e.role, episodeKey: e.episodeKey, model, channel: p.channel, delta: p.text.slice(k, k + per), done: false, at: new Date(t).toISOString(), runId } as CrewEvent);
+        t += ms / steps;
+      }
+    }
+    out.push({ type: 'stream', streamId, role: e.role, episodeKey: e.episodeKey, model, channel: 'content', delta: '', done: true, at: new Date(Math.max(t, end - 1)).toISOString(), runId } as CrewEvent);
+  }
+  events.push(...out);
 }
 
 // ---------------------------------------------------------------------------------------------

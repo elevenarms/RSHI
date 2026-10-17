@@ -29,7 +29,7 @@ export function startSource(onEvent: (e: CrewEvent) => void, onBatch: (es: CrewE
   const replay = q.get('replay');
   if (replay) return startReplay(replay, Number(q.get('speed') ?? '1') || 1, Number(q.get('t') ?? '0') || 0, onEvent, onBatch);
   let ok = false;
-  const es = new EventSource(q.get('events') ?? 'api/events');
+  const es = new EventSource(q.get('events') ?? 'api/events?streams=0');
   es.onopen = () => (ok = true);
   es.onerror = () => (ok = false);
   es.onmessage = (m: MessageEvent<string>) => {
