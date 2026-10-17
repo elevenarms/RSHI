@@ -570,7 +570,7 @@ function showExam(s: StudioState): void {
   if (!x) return;
   const el = $('#exam');
   const d = (x.champion.share - x.baseline.share) * 100;
-  el.innerHTML = `<canvas></canvas><div class="inner"><div class="kicker">The exam · ${x.champion.perTask.length} levels the team has never seen</div>
+  el.innerHTML = `<canvas></canvas><div class="inner"><div class="kicker">SparkleTeam · the exam · ${x.champion.perTask.length} levels the team has never seen</div>
     <div class="big ${d < 0 ? 'neg' : ''}"><span id="exam-num">+0.0</span> pts</div>
     <div class="line">baseline <b>${esc(x.baseline.genomeId)}</b> ${pct(x.baseline.share)} &nbsp;→&nbsp; champion <b style="color:var(--good)">${esc(x.champion.genomeId)}</b> ${pct(x.champion.share)}</div>
     <div class="bars" style="--n:${x.champion.perTask.length}">${x.champion.perTask
