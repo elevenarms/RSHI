@@ -19,7 +19,7 @@ import { loadEnvFile } from '@spotless/bench';
 import type { CrewEvent, Genome, TaskSpec } from './contracts.ts';
 import { CREW_PORT } from './contracts.ts';
 import { EventBus, eventLine, readEvents } from './bus.ts';
-import { modelFor, setStreamSink, usageTotals } from './crusoe.ts';
+import { defaultLoaderEffort, modelFor, setStreamSink, usageTotals } from './crusoe.ts';
 import { emitMemory, evolve, MODELS } from './evolve.ts';
 import { exam } from './exam.ts';
 import { baselineGenome } from './genome.ts';
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
   const tier = (flags.get('tier') ?? 'fast') as Tier;
   const concurrency = num(flags, 'concurrency', CONCURRENCY);
   const loaderModel = modelFor('loader');
-  const loaderEffort = process.env['CREW_LOADER_EFFORT'] ?? '20';
+  const loaderEffort = defaultLoaderEffort(loaderModel);
   const memory = CrewMemory.open(process.env['CREW_MEMORY_DIR'] ?? join(CREW_ROOT, process.env['CREW_FAKE'] === '1' ? 'memory-dry' : 'memory'));
 
   if (cmd === 'tasks') {

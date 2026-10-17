@@ -18,12 +18,18 @@ export const CRUSOE_BASE_URL = process.env['CRUSOE_BASE_URL'] ?? 'https://api.in
 
 /** Default models per role (overridable by CREW_MODEL_<ROLE>). */
 export const DEFAULT_MODELS = {
-  loader: 'nvidia/NVIDIA-Nemotron-3.5-Super-VL',
-  planner: 'nvidia/Nemotron-3.5-Lightning-30B-A3B',
+  // The weakest Nemotron that still plays competently (thinking off): the team improves around it.
+  loader: 'nvidia/Nemotron-3.5-Lightning-30B-A3B',
+  planner: 'nvidia/NVIDIA-Nemotron-3.5-Super-VL',
   critic: 'nvidia/Nemotron-3-Nano-Omni-Reasoning-30B-A3B',
   coach: 'nvidia/NVIDIA-Nemotron-3-Super-120B-A12B',
   librarian: 'nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B',
 } as const;
+
+/** The loader's default reasoning setting: thinking off for the weak Lightning loader, else 20. */
+export function defaultLoaderEffort(model: string): string {
+  return process.env['CREW_LOADER_EFFORT'] ?? (model.toLowerCase().includes('lightning') ? 'off' : '20');
+}
 
 export function modelFor(role: keyof typeof DEFAULT_MODELS): string {
   return process.env[`CREW_MODEL_${role.toUpperCase()}`] ?? DEFAULT_MODELS[role];
