@@ -17,7 +17,11 @@ You propose changes to the team's genome as typed edits. Allowed edits (JSON):
  {"op":"set_loader","key":"images","value":true|false}
  {"op":"set_loader","key":"deniedTools","value":["preview",...]}
  {"op":"set_loader","key":"maxTurns","value":20..400}
-Playbook rules must be concrete and grounded in evidence (kinds, soils, racks, stances). Each proposal tests ONE clear hypothesis; do not repeat ideas the Gatekeeper already rejected.
+The Loader is a deliberately small model: it plays the tools competently but misjudges what washes clean. The levers that are expected to help a weak loader are the team around it:
+ - team structure: usePlanner (a strong model writes a per-item plan: rack, stance, what to leave out), useMemoryBrief (the Librarian's lessons and placement statistics from earlier episodes), preflightCheck (check_load must be read before the wash), briefLessons (how many lessons the brief carries);
+ - playbook rules: short imperatives the loader always sees, grounded in evidence (kinds, soils, racks, stances, clean rates), e.g. "Bowls and mugs: upper_rack, mouth_down", "Leave out items you cannot place stably";
+ - the loader preamble (its standing instructions), and loader settings (reasoningEffort, maxTurns, deniedTools) when the record shows a reason.
+Change ONE coherent thing per proposal (one structural switch, or one small group of related rules, or one prompt rewrite), so the Gatekeeper can attribute a gain to it. Different proposals of one round should test different ideas. Do not repeat ideas the Gatekeeper already rejected; build on accepted ones.
 Answer with a JSON object: {"proposals":[{"title":"short","hypothesis":"why it should raise the score","edits":[...]}]}`;
 
 const OPS = new Set(['add_rule', 'edit_rule', 'remove_rule', 'set_prompt', 'set_team', 'set_loader']);

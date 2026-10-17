@@ -97,6 +97,8 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
   const timeoutMs = options.timeoutMs ?? 5 * 60_000;
   const clean = (s: string): string => s.split(key).join('[key]');
   for (let attempt = 0; ; attempt++) {
+    const cap = IMAGE_CAPS.get(body.model);
+    if (cap !== undefined && Array.isArray(body['messages'])) body = { ...body, messages: capImages(body['messages'] as any[], cap) };
     await acquire(body.model);
     const started = performance.now();
     let failure: ProviderError;
@@ -136,6 +138,12 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
                 ? new ProviderError('api', message, status)
                 : new ProviderError('bad_request', message, status);
         again = status === 429 || status === 408 || status >= 500;
+        const learnt = status === 400 ? imageCapFromError(text) : null;
+        if (learnt !== null && learnt !== IMAGE_CAPS.get(body.model)) {
+          IMAGE_CAPS.set(body.model, learnt);
+          again = true;
+          wait = 0;
+        }
         const ra = response.headers.get('retry-after');
         if (ra !== null && Number.isFinite(Number(ra))) wait = Number(ra) * 1000;
       }
@@ -288,6 +296,46 @@ async function readStream(response: Response, body: { model: string; [k: string]
     usage,
     choices: [{ finish_reason: finish, message: { role: 'assistant', content: content === '' && toolCalls.length > 0 ? null : content, ...(reasoning === '' ? {} : { reasoning_content: reasoning }), ...(toolCalls.length === 0 ? {} : { tool_calls: toolCalls }) } }],
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pictures per request: some models take only a few (Super-VL: 1, counting the whole history)
+// ---------------------------------------------------------------------------------------------
+
+/** Most pictures one request may carry, per model (measured); learnt from a 400 when not listed. */
+export const IMAGE_CAPS = new Map<string, number>([
+  ['nvidia/NVIDIA-Nemotron-3.5-Super-VL', 1],
+  ['nvidia/Nemotron-3-Nano-Omni-Reasoning-30B-A3B', 8],
+]);
+
+/**
+ * The messages with only the newest `cap` pictures kept; older ones become a short text note. Pure:
+ * the same messages give the same result, so the prefix only changes when a new picture arrives.
+ */
+export function capImages(messages: readonly any[], cap: number): any[] {
+  let kept = 0;
+  const out = [...messages];
+  for (let m = out.length - 1; m >= 0; m--) {
+    const msg = out[m];
+    if (!Array.isArray(msg?.content)) continue;
+    let changed = false;
+    const parts = [...msg.content];
+    for (let p = parts.length - 1; p >= 0; p--) {
+      if (parts[p]?.type !== 'image_url') continue;
+      if (kept < cap) kept += 1;
+      else {
+        parts[p] = { type: 'text', text: '[an older picture was removed: this model takes only the most recent picture]' };
+        changed = true;
+      }
+    }
+    if (changed) out[m] = { ...msg, content: parts };
+  }
+  return out;
+}
+
+function imageCapFromError(message: string): number | null {
+  const m = /At most (\d+) image/i.exec(message);
+  return m === null ? null : Number(m[1]);
 }
 
 // ---------------------------------------------------------------------------------------------

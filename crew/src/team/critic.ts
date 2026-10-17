@@ -2,7 +2,7 @@
 
 import type { Critique, EpisodeSummary, Genome } from '../contracts.ts';
 import type { EventBus } from '../bus.ts';
-import { chatJSON, modelFor } from '../crusoe.ts';
+import { chatJSON, IMAGE_CAPS, modelFor } from '../crusoe.ts';
 
 export function outcomeTable(s: EpisodeSummary): string {
   return s.items
@@ -36,7 +36,7 @@ export async function critique(o: { summary: EpisodeSummary; genome: Genome; bus
     const r = await chatJSON<Critique>({
       model: modelFor('critic'),
       role: 'critic',
-      ...((o.images ?? []).length > 0 && process.env['CREW_CRITIC_IMAGES'] !== '0' ? { images: o.images } : {}),
+      ...((o.images ?? []).length > 0 && process.env['CREW_CRITIC_IMAGES'] !== '0' ? { images: (o.images ?? []).slice(0, IMAGE_CAPS.get(modelFor('critic')) ?? 8) } : {}),
       system: o.genome.prompts.critic,
       user,
       maxTokens: 12000,

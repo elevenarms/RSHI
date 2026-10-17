@@ -26,7 +26,7 @@ import { baselineGenome } from './genome.ts';
 import { CrewMemory } from './memory/index.ts';
 import { CONCURRENCY, closeGames, CREW_ROOT, ensureWebBuilt, gameFor, REPO_ROOT, runTask, type Tier } from './runner.ts';
 import { startCrewServer } from './server.ts';
-import { testTasks, trainTasks } from './tasks.ts';
+import { drill, testTasks, trainTasks } from './tasks.ts';
 
 loadEnvFile();
 
@@ -113,7 +113,7 @@ async function main(): Promise<void> {
   if (cmd === 'smoke') {
     const { runId, runDir, bus } = newRun('smoke');
     await serve(bus);
-    const task = trainTasks(1, 0, num(flags, 'items', 8))[0] as TaskSpec;
+    const task = flags.has('source') ? drill(flags.get('source') as string, num(flags, 'items', 12), num(flags, 'seed', 0), 'train') : (trainTasks(1, 0, num(flags, 'items', 8))[0] as TaskSpec);
     const genome = baselineGenome({ loader: loaderModel, loaderEffort });
     const game = await gameFor(tier, [task]);
     bus.emit({ type: 'run_started', mode: 'smoke', models: MODELS(loaderModel), trainTasks: [{ id: task.id, title: task.title, items: task.itemCount }], testTasks: [], generations: 0, gameUrl: game.url });

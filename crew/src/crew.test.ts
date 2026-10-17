@@ -83,3 +83,16 @@ describe('gatekeeper and bus', () => {
     expect(extractJSON('x {"a": "}"} y')).toEqual({ a: '}' });
   });
 });
+
+describe('image caps', () => {
+  it('keeps only the newest pictures', async () => {
+    const { capImages } = await import('./crusoe.ts');
+    const img = { type: 'image_url', image_url: { url: 'data:x' } };
+    const out = capImages([{ role: 'user', content: [{ type: 'text', text: 'a' }, img] }, { role: 'tool', content: 'r' }, { role: 'user', content: [img, img] }], 1);
+    const count = JSON.stringify(out).split('image_url').length - 1;
+    expect(count).toBe(2); // one part: type + key
+    expect(out[0].content[1].type).toBe('text');
+    expect(out[2].content[1].type).toBe('image_url');
+    expect(out[2].content[0].type).toBe('text');
+  });
+});

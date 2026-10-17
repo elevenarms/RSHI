@@ -26,6 +26,13 @@ export interface TeamModels {
   readonly loaderEffort?: string | null;
 }
 
+/** Models that take pictures (the others get none: `images: false`). */
+export function isVisionModel(model: string): boolean {
+  const m = model.toLowerCase();
+  if (m.includes('nemotron')) return m.includes('-vl') || m.includes('omni');
+  return !/glm-5\.3$|deepseek-v4-pro|gpt-oss|deepseek-v4-flash/.test(m);
+}
+
 function shortHash(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 6);
 }
@@ -42,7 +49,7 @@ export function baselineGenome(models: TeamModels, createdAt = new Date().toISOS
     loader: {
       model: models.loader,
       reasoningEffort: models.loaderEffort === undefined ? '20' : models.loaderEffort,
-      images: true,
+      images: isVisionModel(models.loader),
       deniedTools: [] as string[],
       maxTurns: 120,
     },

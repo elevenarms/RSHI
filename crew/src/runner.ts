@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import type { HarnessGame } from '@spotless/bench';
 import { runEpisode, startGame } from '@spotless/bench';
+import { getItemType } from '@spotless/catalogue';
 import type { Level } from '@spotless/levels';
 import { DEFAULT_STATIC_DIR } from '@spotless/server';
 import type { CrewMemoryApi, EpisodePurpose, EpisodeSummary, Genome, ItemOutcome, TaskSpec } from './contracts.ts';
@@ -74,6 +75,14 @@ export async function pool<T, R>(items: readonly T[], n: number, work: (item: T,
 export const CONCURRENCY = Number(process.env['CREW_CONCURRENCY'] ?? '3');
 
 let episodeSeq = 0;
+
+function labelOf(kind: string): { label?: string } {
+  try {
+    return { label: getItemType(kind).name };
+  } catch {
+    return {};
+  }
+}
 
 /** Final pictures of each episode's load (episodeKey -> PNGs), for the Critic; dropped once reviewed. */
 export const finalImages = new Map<string, string[]>();
@@ -190,7 +199,7 @@ export async function runTask(o: RunTaskOptions): Promise<EpisodeSummary> {
     const m = /^episode ([0-9a-f-]{36}):/.exec(line);
     if (m !== null) {
       const sessionId = m[1] as string;
-      bus?.emit({ type: 'episode_started', episodeKey, sessionId, watchUrl: `${o.game.url}/#${sessionId}&watch`, taskId: task.id, taskTitle: task.title, genomeId: genome.id, purpose: o.purpose, pointsAvailable: task.pointsAvailable, itemCount: task.itemCount });
+      bus?.emit({ type: 'episode_started', episodeKey, sessionId, watchUrl: `${o.game.url}/#${sessionId}&watch`, taskId: task.id, taskTitle: task.title, genomeId: genome.id, purpose: o.purpose, pointsAvailable: task.pointsAvailable, itemCount: task.itemCount, items: level.items.map((i) => ({ itemId: i.id, kind: i.itemType, soils: i.soils.map((s) => s.type), points: i.points, ...labelOf(i.itemType) })) });
       bus?.emit({ type: 'agent_status', role: 'loader', status: 'acting', label: `loading ${task.title}`, episodeKey });
     } else if (line.startsWith('wash ') && !washSaid) {
       washSaid = true;
