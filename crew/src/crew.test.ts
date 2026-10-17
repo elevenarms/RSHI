@@ -57,7 +57,7 @@ describe('loader policy', () => {
     expect(refused.structured?.['reason']).toBe('preflight_required');
     await tools.call('check_load', {});
     await tools.call('start_cycle', {});
-    expect(made).toEqual(['place', 'check_load', 'start_cycle']);
+    expect(made).toEqual(['place', 'check_load', 'render', 'render', 'start_cycle']);
     const inner = scriptedProvider([{ say: 'hi' }]);
     const p = wrapProvider(inner, { extra: 'RULE-XYZ', images: true, bus: null, episodeKey: 'k', trace });
     await p.complete({ system: 'SYS', tools: [], history: [] });
