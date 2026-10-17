@@ -318,6 +318,21 @@ export type CrewEvent = { readonly at: string; readonly runId: string } & (
       readonly tokensOut: number;
       readonly ms: number;
     }
+  | {
+      /**
+       * Tokens as a model streams them, batched (about every 100 ms per stream). `streamId` is
+       * one model call; `channel` says whether the text is the model's reasoning, its visible
+       * answer, or the arguments of a tool call it is writing. `done` closes the stream.
+       */
+      readonly type: 'stream';
+      readonly streamId: string;
+      readonly role: Role;
+      readonly episodeKey?: string;
+      readonly model: string;
+      readonly channel: 'reasoning' | 'content' | 'tool_args';
+      readonly delta: string;
+      readonly done: boolean;
+    }
   | { readonly type: 'wash'; readonly episodeKey: string; readonly status: 'started' | 'done' | 'failed'; readonly detail: string }
   | { readonly type: 'episode_finished'; readonly summary: EpisodeSummary }
   | {
