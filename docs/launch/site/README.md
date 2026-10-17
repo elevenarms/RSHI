@@ -31,14 +31,14 @@ did not replicate; the headline is learned superstitions).
 | `EXAM12_DELTA`, `EXAM12_CI`, `EXAM12_WINS` | filled (also hard-coded in the HTML) | "Exam and replication" block | 12-drill replication, REFRAME.md |
 | `VIDEO_URL` | filled: `assets/video/sparkleteam.mp4` | Video button, teaser caption | launch video |
 | `SLIDES_URL` | filled | Slides button | deck |
-| `SFT_DATASET` | **pending** | "Next recursion" box (proposed fine-tune) | docs/crew/insights/sft/README.md (examples, episodes, mean score) once exported |
+| `SFT_DATASET` | filled | "Next recursion" box (proposed fine-tune) | docs/crew/insights/sft/README.md (examples, episodes, mean score) once exported |
 | `INSIGHTS_ABLATIONS`, `INSIGHTS_TRANSFER`, `INSIGHTS_PHYSICS_MAP` | **pending** | "More from the Division" | INSIGHTS.md (ablation still running) |
 | `STUDIO_URL` | **pending** | Studio replay button | hosted replay / recording |
 
 Edited directly in `index.html` (HTML comments mark them):
 
-- `ABSTRACT`: **pending sync.** The paper's revised abstract was not ready; the page carries our
-  faithful summary of REFRAME.md. Replace it verbatim from docs/crew/paper/main.tex when it lands.
+- `ABSTRACT`: verbatim from docs/crew/paper/main.tex (f7c2479), LaTeX converted to HTML. Re-sync if
+  the paper abstract changes again.
 - `TEASER`: wired to `assets/video/sparkleteam-teaser.mp4` with poster
   `assets/video/sparkleteam-poster.png`; the reframed cut replaces these files under the same names.
 - `SITE_URL`: share-card URLs are absolute for https://elevenarms.github.io/RSHI/.
