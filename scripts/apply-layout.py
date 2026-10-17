@@ -32,6 +32,7 @@ REWRITES = [
     ("docs/*.md", r"(?<![\w/])apps/studio\b", "studio"),
     ("docs/*.md", r"(?<![\w/])(apps/web|packages/(?!crew\b)[a-z-]+)", r"upstream/DishwasherBench/\1"),
     ("crew/src/**/*.ts", r"(?<![\w/])apps/studio/dist\b", "studio/dist"),
+    ("crew/src/**/*.ts", r"(?<![\w/])packages/crew/runs\b", "crew/runs"),
     ("studio/**/*.ts", r"(?<![\w/])apps/studio/", "studio/"),
 ]
 
