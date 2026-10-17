@@ -30,6 +30,10 @@ export interface EvolveOptions {
   readonly game: GamePool;
   /** Train tasks: practice uses seeds [0, practice), validation of generation g uses fresh seeds. */
   readonly tasksFor: (count: number, seedBase: number) => TaskSpec[];
+  /** Resume: the incumbent to continue from (generations count on from its generation). */
+  readonly resumeFrom?: Genome;
+  /** Seed base of the practice a resumed incumbent still lacks. */
+  readonly resumePracticeSeed?: number;
 }
 
 export const MODELS = (loader: string): { [r in Role]?: string } => ({ loader, planner: modelFor('planner'), critic: modelFor('critic'), coach: modelFor('coach'), librarian: modelFor('librarian'), gatekeeper: 'statistics (local)' });
@@ -60,16 +64,30 @@ const mean = (xs: readonly EpisodeSummary[]): number => (xs.length === 0 ? 0 : x
 export async function evolve(o: EvolveOptions, baseline: Genome): Promise<Genome> {
   const { bus, memory, game } = o;
   const n = o.concurrency ?? CONCURRENCY;
-  let incumbent = baseline;
-  memory.saveGenome(baseline, 'baseline');
-  bus.emit({ type: 'genome', genome: baseline, status: 'baseline' });
+  let incumbent = o.resumeFrom ?? baseline;
+  let history: EpisodeSummary[];
+  const start = incumbent.generation;
+  if (o.resumeFrom === undefined) {
+    memory.saveGenome(baseline, 'baseline');
+    bus.emit({ type: 'genome', genome: baseline, status: 'baseline' });
+    bus.emit({ type: 'phase', phase: 'baseline', generation: 0, detail: `${baseline.id} practises on ${o.practice} train tasks` });
+    const practiceTasks = o.tasksFor(o.practice, 0);
+    history = await pool(practiceTasks, n, (task) => runTask({ game, task, genome: incumbent, memory, bus, purpose: 'train', tier: o.tier, runId: o.runId, runDir: o.runDir }));
+    bus.log(`baseline practice mean share ${mean(history).toFixed(3)}`);
+  } else {
+    // The incumbent's learnable episodes already in memory; only the missing practice is played.
+    history = memory.episodes({ genomeId: incumbent.id }).filter((s) => !s.failed && (s.purpose === 'train' || s.purpose === 'eval')) as EpisodeSummary[];
+    const missing = Math.max(0, o.practice - history.length);
+    bus.emit({ type: 'phase', phase: 'practice', generation: start, detail: `resuming ${incumbent.id}: ${history.length} episodes in memory${missing > 0 ? `, ${missing} more practice` : ''}` });
+    if (missing > 0) {
+      const extra = await pool(o.tasksFor(missing, o.resumePracticeSeed ?? 500), n, (task) => runTask({ game, task, genome: incumbent, memory, bus, purpose: 'train', tier: o.tier, runId: o.runId, runDir: o.runDir }));
+      history = [...history, ...extra];
+    }
+    // Reviewed already: only the new practice goes to the Critic.
+    if (missing === 0) history = history.slice(-o.practice);
+  }
 
-  bus.emit({ type: 'phase', phase: 'baseline', generation: 0, detail: `${baseline.id} practises on ${o.practice} train tasks` });
-  const practiceTasks = o.tasksFor(o.practice, 0);
-  let history: EpisodeSummary[] = await pool(practiceTasks, n, (task) => runTask({ game, task, genome: incumbent, memory, bus, purpose: 'train', tier: o.tier, runId: o.runId, runDir: o.runDir }));
-  bus.log(`baseline practice mean share ${mean(history).toFixed(3)}`);
-
-  for (let gen = 1; gen <= o.generations; gen++) {
+  for (let gen = start + 1; gen <= start + o.generations; gen++) {
     bus.emit({ type: 'phase', phase: 'review', generation: gen, detail: `critic reviews ${history.length} episodes` });
     await review(o, incumbent, history);
 

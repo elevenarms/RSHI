@@ -143,16 +143,29 @@ async function main(): Promise<void> {
     const proposals = num(flags, 'proposals', 2);
     const examTasks = num(flags, mode === 'exam' ? 'tasks' : 'exam-tasks', 3);
     const withExam = mode === 'exam' || flags.get('exam') === 'true';
-    const train = mode === 'evolve' ? [...trainTasks(practice, 0), ...Array.from({ length: generations }, (_, g) => trainTasks(validate, 1000 * (g + 1))).flat()] : [];
+    const resume = mode === 'evolve' && flags.get('resume') === 'true';
+    const storedBase = memory.genomes().find((g) => g.status === 'baseline')?.genome;
+    const resumeFrom = resume ? (memory.champion() ?? storedBase ?? null) : null;
+    const startGen = resumeFrom?.generation ?? 0;
+    // Practice of a resumed incumbent that has too few episodes: fresh seeds after its generation.
+    const resumePractice = resume ? trainTasks(practice, 500 + 10 * startGen) : [];
+    const train = mode === 'evolve' ? [...(resume ? resumePractice : trainTasks(practice, 0)), ...Array.from({ length: generations }, (_, g) => trainTasks(validate, 1000 * (startGen + g + 1))).flat()] : [];
     const test = withExam ? testTasks(examTasks, 0) : [];
     const game = await gameFor(tier, [...train, ...test]);
-    const baseline = baselineGenome({ loader: loaderModel, loaderEffort });
-    bus.emit({ type: 'run_started', mode, models: MODELS(loaderModel), trainTasks: train.map((t) => ({ id: t.id, title: t.title, items: t.itemCount })), testTasks: test.map((t) => ({ id: t.id, title: t.title, items: t.itemCount })), generations: mode === 'evolve' ? generations : 0, gameUrl: game.url });
+    // The exam's baseline is the stored one when memory has it (same id as the run that made it).
+    const baseline = (resume || mode === 'exam') && storedBase !== undefined ? storedBase : baselineGenome({ loader: loaderModel, loaderEffort });
+    bus.emit({ type: 'run_started', mode, models: MODELS(loaderModel), trainTasks: train.map((t) => ({ id: t.id, title: t.title, items: t.itemCount })), testTasks: test.map((t) => ({ id: t.id, title: t.title, items: t.itemCount })), generations: mode === 'evolve' ? startGen + generations : 0, gameUrl: game.url });
+    if (resume) {
+      // The lineage so far, so the studio shows the earlier generations too.
+      for (const g of memory.genomes()) bus.emit({ type: 'genome', genome: g.genome, status: g.status as 'baseline' | 'candidate' | 'accepted' | 'rejected' | 'champion' });
+      for (const d of memory.decisions()) bus.emit({ type: 'decision', decision: d });
+      bus.log(`resuming from ${resumeFrom?.id ?? baseline.id} (generation ${startGen}); ${generations} more generation(s)`);
+    }
     emitMemory(bus, memory);
     const t0 = Date.now();
     let champion: Genome;
     if (mode === 'evolve') {
-      champion = await evolve({ generations, practice, validate, proposals, tier, concurrency, margin: num(flags, 'margin', Number(process.env['CREW_MARGIN'] ?? '0.03')), runId, runDir, bus, memory, game, tasksFor: (count, seedBase) => trainTasks(count, seedBase) }, baseline);
+      champion = await evolve({ generations, practice, validate, proposals, tier, concurrency, margin: num(flags, 'margin', Number(process.env['CREW_MARGIN'] ?? '0.03')), runId, runDir, bus, memory, game, tasksFor: (count, seedBase) => trainTasks(count, seedBase), ...(resumeFrom !== null ? { resumeFrom, resumePracticeSeed: 500 + 10 * startGen } : {}) }, baseline);
       console.log(`evolution took ${((Date.now() - t0) / 60000).toFixed(1)} min; champion ${champion.id}`);
     } else {
       const wanted = flags.get('champion');
