@@ -231,7 +231,7 @@ for glasses & cutlery`. Footnote `validation share; fresh seeds each generation`
 **Visual.**
 1. (2:18–2:24) Amber rule draws across the frame: `HELD-OUT · levels 5–7 · never seen in training`.
    3D-05 turntable montage, 1.5 s each: `baby_bottle_01` (milk film), `sippy_cup_01` (avocado),
-   `gratin_dish_01` (baked cheese, pasta starch), plus the baking-tray turntable (burnt sugar).
+   `gratin_dish_01` (baked cheese, pasta starch), `food_container_03` (lunch tub).
 2. (2:24–2:28) 3D-06: Baking drill #1 side by side, same seed. Left: G0, four items in the racks,
    eight left on the counter. Right: champion, eleven items in. Labels `G0 28/71` and
    `champion 63/71`.
@@ -242,8 +242,8 @@ for glasses & cutlery`. Footnote `validation share; fresh seeds each generation`
    very end: `n = 4 drills, one seed each`.
 
 **VO.**
-> Then the exam: / levels it had never seen, / with baby bottles, / baking trays, / and sugar burnt
-> on overnight. // Forty-six percent / became sixty-three point seven. // Plus seventeen point eight
+> Then the exam: / levels it had never seen, / with baby bottles, / lunch tubs, / and cheese baked
+> onto a gratin dish. // Forty-six percent / became sixty-three point seven. // Plus seventeen point eight
 > points, / ahead on three drills of four.
 
 **On-screen text.** As above; small `loaded 23 → 35 of 48 · clean-of-loaded 100% → 91%`.
@@ -297,7 +297,7 @@ light background, no UI chrome.
 | 3D-02 | S03 | Turntable, episode `drill-mixed-family-12-s3__crew-G0-fc671e__s1__c4ba102f`: `cereal_bowl_01` (`cereal_bowl_vitrelle_159`, yoghurt and muesli, 10 h), then `frying_pan_01` (`frying_pan_clad_254`, `egg_cooked`, 10 h). Soiled state (before the wash). | Locked camera, 15° above, slow turntable spin (≈20°/s); 2.5 s each, crossfade. | 5 s |
 | 3D-03 | S03 | Watch replay, episode `drill-breakfast-12-s3__crew-G0-fc671e__s1__ff98085a`: the first placements, e.g. `juice_glass_01` (`tumbler_250`, tomato juice) going mouth-down on the upper rack, `porridge_bowl_04` (`cereal_bowl_vitrelle_159`, porridge), `fork_01`/`spoon_04` into the cutlery basket. Speed up the loading (×4–×8) but show each drop at real speed. | Slow orbit 20° around the open machine, slightly above the upper rack. | 5 s |
 | 3D-04 | S03 | Same episode, wash phase with the cosmetic water spray on. | Door-cut-away or semi-transparent door, low angle at the lower spray arm, slow push-in. | 6 s |
-| 3D-05 | S10 | Turntables (exam items, soiled): `baby_bottle_01` (`baby_bottle_pp_260`, `milk_film`) from `drill-mixed-family-12-s0__crew-G0-fc671e__s1__aa6870d0`; `sippy_cup_01` (`sippy_cup_240`, `avocado`) from `drill-mixed-family-12-s3__crew-G0-fc671e__s1__c4ba102f`; `gratin_dish_01` (`oven_dish_stoneware_320`, `cheese_baked`, `pasta_starch`) from `drill-dinner-party-12-s2__crew-G0-fc671e__s1__94cd11dc`. Baking tray: `baking_tray_half_sheet` with `burnt_sugar` is not in any exam drill; render it from a baking-day level session or drop it (and change the VO line "baking trays" to "lunch tubs", using `food_container_03`, `food_container_600ml`). | Same turntable framing as 3D-02; 1.5 s each, hard cuts. | 6 s |
+| 3D-05 | S10 | Turntables (exam items, soiled): `baby_bottle_01` (`baby_bottle_pp_260`, `milk_film`) from `drill-mixed-family-12-s0__crew-G0-fc671e__s1__aa6870d0`; `sippy_cup_01` (`sippy_cup_240`, `avocado`) from `drill-mixed-family-12-s3__crew-G0-fc671e__s1__c4ba102f`; `gratin_dish_01` (`oven_dish_stoneware_320`, `cheese_baked`, `pasta_starch`) from `drill-dinner-party-12-s2__crew-G0-fc671e__s1__94cd11dc`. Lunch tub: `food_container_03` (`food_container_600ml`) from `drill-mixed-family-12-s0__crew-G0-fc671e__s1__aa6870d0`. (Changed from the baking tray, which is in no exam drill; the VO now says "lunch tubs" and "cheese baked onto a gratin dish".) | Same turntable framing as 3D-02; 1.5 s each, hard cuts. | 6 s |
 | 3D-06 | S10 | Baking drill #1 final loads, same seed, side by side: G0 `drill-baking-day-12-s1__crew-G0-fc671e__s1__0fcdad5a` (loaded: `cake_plate_03`, `curd_pot_02`, `mixing_bowl_01`, `mug_01`; 28/71) vs champion `drill-baking-day-12-s1__crew-G2-704108__s1__7af52537` (all but `mixing_bowl_01`; 63/71). Final state after the wash (clean items as the client draws them). | Identical locked camera for both halves, three-quarter top-down into the open racks; render each separately and composite. | 4 s |
 
 Note: the Studio replay shows representative stills for LIVE and OBJECT because the game servers
