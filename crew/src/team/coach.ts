@@ -50,6 +50,7 @@ export async function propose(o: {
   try {
     const r = await chatJSON<Proposal[]>({
       model: modelFor('coach'),
+      role: 'coach',
       system: COACH_SYSTEM,
       user,
       maxTokens: 16000,

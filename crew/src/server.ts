@@ -38,7 +38,9 @@ export function startCrewServer(o: CrewServerOptions): Promise<Server> {
       const send = (e: CrewEvent): void => {
         res.write(`data: ${JSON.stringify(e)}\n\n`);
       };
-      for (const e of o.bus.events) send(e);
+      // ?streams=0 skips the past token stream (it can be large); live tokens still come.
+      const pastStreams = url.searchParams.get('streams') !== '0';
+      for (const e of o.bus.events) if (pastStreams || e.type !== 'stream') send(e);
       const off = o.bus.subscribe(send);
       const beat = setInterval(() => res.write(': heartbeat\n\n'), 15_000);
       req.on('close', () => {

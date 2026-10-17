@@ -26,6 +26,7 @@ export async function makePlan(o: { genome: Genome; level: Level; brief: string 
       .join('\n\n');
     const r = await chatJSON<{ plan: string; leave_out?: string[] }>({
       model: modelFor('planner'),
+      role: 'planner',
       system: o.genome.prompts.planner,
       user,
       maxTokens: 6000,

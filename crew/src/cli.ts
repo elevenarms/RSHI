@@ -19,7 +19,7 @@ import { loadEnvFile } from '@spotless/bench';
 import type { CrewEvent, Genome, TaskSpec } from './contracts.ts';
 import { CREW_PORT } from './contracts.ts';
 import { EventBus, eventLine, readEvents } from './bus.ts';
-import { modelFor, usageTotals } from './crusoe.ts';
+import { modelFor, setStreamSink, usageTotals } from './crusoe.ts';
 import { emitMemory, evolve, MODELS } from './evolve.ts';
 import { exam } from './exam.ts';
 import { baselineGenome } from './genome.ts';
@@ -62,6 +62,7 @@ function newRun(mode: string): { runId: string; runDir: string; bus: EventBus } 
     const line = eventLine(e);
     if (line !== null) console.log(line);
   });
+  setStreamSink((e) => bus.emit(e));
   return { runId, runDir, bus };
 }
 

@@ -12,6 +12,7 @@
 import type { JsonValue } from '@spotless/core';
 import type { ModelProvider, ModelTurn, OpenAiToolCall, TurnRequest, TurnStop } from '@spotless/bench';
 import { ProviderError, openaiMessages, openaiUsage } from '@spotless/bench';
+import type { CrewEventInput, Role } from './contracts.ts';
 
 export const CRUSOE_BASE_URL = process.env['CRUSOE_BASE_URL'] ?? 'https://api.inference.crusoecloud.com/v1';
 
@@ -86,8 +87,10 @@ function apiKey(): string {
 }
 
 /** Posts a chat completions body with rate limiting and retries; the reply JSON. */
-export async function crusoeChat(body: { model: string; [k: string]: unknown }, options: { timeoutMs?: number; maxRetries?: number } = {}): Promise<{ reply: any; ms: number }> {
+export async function crusoeChat(body: { model: string; [k: string]: unknown }, options: { timeoutMs?: number; maxRetries?: number; stream?: StreamTag } = {}): Promise<{ reply: any; ms: number }> {
   if (process.env['CREW_FAKE'] === '1') return fakeChat(body);
+  const streaming = options.stream !== undefined && process.env['CREW_STREAM'] !== '0';
+  if (streaming) body = { ...body, stream: true, stream_options: { include_usage: true } };
   const key = apiKey();
   const maxRetries = options.maxRetries ?? 6;
   const timeoutMs = options.timeoutMs ?? 5 * 60_000;
@@ -105,6 +108,13 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs),
       });
+      if (response.ok && streaming) {
+        try {
+          return { reply: await readStream(response, body, options.stream as StreamTag), ms: Math.round(performance.now() - started) };
+        } catch (error) {
+          throw new StreamBroken(error instanceof Error ? error.message : String(error));
+        }
+      }
       const text = await response.text();
       if (response.ok) {
         try {
@@ -129,7 +139,8 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
         if (ra !== null && Number.isFinite(Number(ra))) wait = Number(ra) * 1000;
       }
     } catch (error) {
-      const name = error instanceof Error ? error.name : '';
+      if (error instanceof ProviderError) throw error;
+      const name = error instanceof StreamBroken ? 'StreamBroken' : error instanceof Error ? error.name : '';
       failure =
         name === 'TimeoutError' || name === 'AbortError'
           ? new ProviderError('timeout', `no reply within ${timeoutMs} ms`)
@@ -141,6 +152,141 @@ export async function crusoeChat(body: { model: string; [k: string]: unknown }, 
     const backoff = Math.min(60_000, 1500 * 2 ** attempt) * (0.7 + Math.random() * 0.6);
     await pause(Math.min(90_000, wait ?? backoff));
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Streaming: the reply assembled from SSE chunks, and `stream` events for the studio
+// ---------------------------------------------------------------------------------------------
+
+/** Who a streamed call belongs to. */
+export interface StreamTag {
+  readonly role: Role;
+  readonly episodeKey?: string;
+}
+
+class StreamBroken extends Error {}
+
+type StreamEvent = Extract<CrewEventInput, { type: 'stream' }>;
+let streamSink: ((event: StreamEvent) => void) | null = null;
+/** Where `stream` events go (the bus); null for nowhere. */
+export function setStreamSink(sink: ((event: StreamEvent) => void) | null): void {
+  streamSink = sink;
+}
+
+let streamSeq = 0;
+const FLUSH_MS = 100;
+
+/** Batches deltas per channel and emits them about every 100 ms. */
+class StreamEmitter {
+  private readonly id: string;
+  private readonly buffers = new Map<StreamEvent['channel'], string>();
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private lastChannel: StreamEvent['channel'] = 'content';
+  constructor(private readonly tag: StreamTag, private readonly model: string) {
+    streamSeq += 1;
+    this.id = `${tag.role}-${Date.now().toString(36)}-${streamSeq}`;
+  }
+  push(channel: StreamEvent['channel'], delta: string): void {
+    if (streamSink === null || delta === '') return;
+    this.lastChannel = channel;
+    this.buffers.set(channel, (this.buffers.get(channel) ?? '') + delta);
+    if (this.timer === null) this.timer = setInterval(() => this.flush(false), FLUSH_MS);
+  }
+  private emit(channel: StreamEvent['channel'], delta: string, done: boolean): void {
+    streamSink?.({ type: 'stream', streamId: this.id, role: this.tag.role, ...(this.tag.episodeKey === undefined ? {} : { episodeKey: this.tag.episodeKey }), model: this.model, channel, delta, done });
+  }
+  flush(done: boolean): void {
+    for (const [channel, text] of this.buffers) if (text !== '') this.emit(channel, text, false);
+    this.buffers.clear();
+    if (done) {
+      if (this.timer !== null) clearInterval(this.timer);
+      this.timer = null;
+      if (streamSink !== null) this.emit(this.lastChannel, '', true);
+    }
+  }
+}
+
+/** Reads an SSE chat completion into the shape of a non-streamed reply. */
+async function readStream(response: Response, body: { model: string; [k: string]: unknown }, tag: StreamTag): Promise<any> {
+  const emitter = new StreamEmitter(tag, body.model);
+  let content = '';
+  let reasoning = '';
+  let finish: string | null = null;
+  let usage: any = null;
+  let model: string = body.model;
+  const calls: { id: string; name: string; args: string }[] = [];
+  const decoder = new TextDecoder();
+  let pending = '';
+  const handle = (data: string): void => {
+    if (data === '[DONE]') return;
+    let chunk: any;
+    try {
+      chunk = JSON.parse(data);
+    } catch {
+      return;
+    }
+    if (chunk.error !== undefined) throw new Error(`stream error: ${JSON.stringify(chunk.error).slice(0, 300)}`);
+    if (typeof chunk.model === 'string') model = chunk.model;
+    if (chunk.usage != null) usage = chunk.usage;
+    const choice = chunk.choices?.[0];
+    if (choice === undefined) return;
+    if (choice.finish_reason != null) finish = choice.finish_reason;
+    const d = choice.delta ?? {};
+    const r = typeof d.reasoning_content === 'string' ? d.reasoning_content : typeof d.reasoning === 'string' ? d.reasoning : '';
+    if (r !== '') {
+      reasoning += r;
+      emitter.push('reasoning', r);
+    }
+    if (typeof d.content === 'string' && d.content !== '') {
+      content += d.content;
+      emitter.push('content', d.content);
+    }
+    for (const tc of (d.tool_calls ?? []) as any[]) {
+      const i = typeof tc.index === 'number' ? tc.index : calls.length;
+      let call = calls[i];
+      if (call === undefined) {
+        call = { id: '', name: '', args: '' };
+        calls[i] = call;
+      }
+      if (typeof tc.id === 'string' && tc.id !== '') call.id = tc.id;
+      if (typeof tc.function?.name === 'string' && tc.function.name !== '') {
+        call.name += tc.function.name;
+        emitter.push('tool_args', `${i > 0 || content !== '' ? '\n' : ''}${tc.function.name} `);
+      }
+      if (typeof tc.function?.arguments === 'string' && tc.function.arguments !== '') {
+        call.args += tc.function.arguments;
+        emitter.push('tool_args', tc.function.arguments);
+      }
+    }
+  };
+  try {
+    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      pending += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = pending.indexOf('\n')) >= 0) {
+        const line = pending.slice(0, nl).trim();
+        pending = pending.slice(nl + 1);
+        if (line.startsWith('data:')) handle(line.slice(5).trim());
+      }
+    }
+    if (pending.trim().startsWith('data:')) handle(pending.trim().slice(5).trim());
+  } finally {
+    emitter.flush(true);
+  }
+  if (usage === null) {
+    // No usage in the stream: an estimate (four characters a token).
+    const sent = JSON.stringify(body['messages'] ?? '').length + JSON.stringify(body['tools'] ?? '').length;
+    usage = { prompt_tokens: Math.ceil(sent / 4), completion_tokens: Math.ceil((content.length + reasoning.length + calls.reduce((a, c) => a + c.args.length, 0)) / 4), estimated: true };
+  }
+  const toolCalls = calls.filter((c) => c !== undefined).map((c, i) => ({ id: c.id === '' ? `call_s${streamSeq}_${i}` : c.id, type: 'function', function: { name: c.name, arguments: c.args === '' ? '{}' : c.args } }));
+  return {
+    model,
+    usage,
+    choices: [{ finish_reason: finish, message: { role: 'assistant', content: content === '' && toolCalls.length > 0 ? null : content, ...(reasoning === '' ? {} : { reasoning_content: reasoning }), ...(toolCalls.length === 0 ? {} : { tool_calls: toolCalls }) } }],
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -225,6 +371,8 @@ export interface ChatJSONOptions<T> {
   readonly validate?: (value: unknown) => T;
   /** Tries when the reply is not valid JSON; default 2. */
   readonly attempts?: number;
+  /** The role whose tokens are streamed to the studio; none: not streamed. */
+  readonly role?: Role;
 }
 
 export interface ChatJSONResult<T> {
@@ -253,7 +401,7 @@ export async function chatJSON<T = unknown>(o: ChatJSONOptions<T>): Promise<Chat
       max_tokens: o.maxTokens ?? 8000,
       temperature: o.temperature ?? 0.6,
       ...reasoningFields(o.model, o.reasoning ?? null),
-    });
+    }, o.role === undefined ? {} : { stream: { role: o.role } });
     ms += took;
     const u = openaiUsage(reply.usage);
     const usage = { in: u.input_tokens + u.cache_read_input_tokens, out: u.output_tokens, cached: u.cache_read_input_tokens };
@@ -279,6 +427,8 @@ export interface LoaderProviderOptions {
   readonly reasoningEffort: string | null;
   readonly maxTokens?: number;
   readonly temperature?: number;
+  /** Streams the turn's tokens to the studio under this episode. */
+  readonly episodeKey?: string;
 }
 
 /**
@@ -319,7 +469,7 @@ export function loaderProvider(o: LoaderProviderOptions): ModelProvider {
         max_tokens: maxTokens,
         ...(o.temperature === undefined ? {} : { temperature: o.temperature }),
         ...reasoningFields(o.model, o.reasoningEffort),
-      });
+      }, { stream: { role: 'loader', ...(o.episodeKey === undefined ? {} : { episodeKey: o.episodeKey }) } });
       const choice = reply.choices?.[0];
       const message = choice?.message;
       if (choice === undefined || message === undefined) throw new ProviderError('api', 'the reply has no choice');

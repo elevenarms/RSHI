@@ -178,7 +178,7 @@ export async function runTask(o: RunTaskOptions): Promise<EpisodeSummary> {
     if (brief.trim() !== '') bus?.emit({ type: 'message', from: 'librarian', to: genome.team.usePlanner ? 'planner' : 'loader', kind: 'brief', title: `Brief for ${task.title}`, body: brief });
   }
   const plan = genome.team.usePlanner ? await makePlan({ genome, level, brief, bus, episodeKey }) : null;
-  const provider = loaderProvider({ model: genome.loader.model, reasoningEffort: genome.loader.reasoningEffort });
+  const provider = loaderProvider({ model: genome.loader.model, reasoningEffort: genome.loader.reasoningEffort, episodeKey });
   const { policy, trace } = crewLoaderPolicy({ genome, plan, brief: genome.team.usePlanner ? null : brief, provider, bus, episodeKey });
   const outDir = join(o.runDir, 'episodes');
   mkdirSync(outDir, { recursive: true });

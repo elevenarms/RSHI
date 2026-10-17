@@ -34,6 +34,7 @@ export async function critique(o: { summary: EpisodeSummary; genome: Genome; bus
       .join('\n\n');
     const r = await chatJSON<Critique>({
       model: modelFor('critic'),
+      role: 'critic',
       system: o.genome.prompts.critic,
       user,
       maxTokens: 12000,
