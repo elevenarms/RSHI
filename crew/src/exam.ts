@@ -5,15 +5,14 @@
 
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { HarnessGame } from '@spotless/bench';
 import type { EpisodeSummary, Genome, TaskSpec } from './contracts.ts';
 import type { CrewMemory } from './memory/index.ts';
 import type { EventBus } from './bus.ts';
 import { diffGenomes } from './genome.ts';
-import { CONCURRENCY, pool, runTask, type Tier } from './runner.ts';
+import { CONCURRENCY, type GamePool, pool, runTask, type Tier } from './runner.ts';
 import { usageTotals } from './crusoe.ts';
 
-export async function exam(o: { baseline: Genome; champion: Genome; tasks: readonly TaskSpec[]; game: HarnessGame; tier: Tier; bus: EventBus; memory: CrewMemory; runId: string; runDir: string; concurrency?: number }): Promise<{ baseline: EpisodeSummary[]; champion: EpisodeSummary[] }> {
+export async function exam(o: { baseline: Genome; champion: Genome; tasks: readonly TaskSpec[]; game: GamePool; tier: Tier; bus: EventBus; memory: CrewMemory; runId: string; runDir: string; concurrency?: number }): Promise<{ baseline: EpisodeSummary[]; champion: EpisodeSummary[] }> {
   const { bus } = o;
   bus.emit({ type: 'phase', phase: 'exam', generation: o.champion.generation, detail: `${o.baseline.id} vs ${o.champion.id} on ${o.tasks.length} held-out tasks` });
   const jobs = o.tasks.flatMap((task) => [

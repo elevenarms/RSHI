@@ -174,7 +174,13 @@ export function crewLoaderPolicy(o: CrewLoaderOptions): { policy: Policy; trace:
   const trace: LoaderTrace = { locations: new Map(), notes: [], refusedStarts: 0 };
   const extra = loaderSystemText(o.genome, o.plan, o.brief);
   const provider = wrapProvider(o.provider, { extra, images: o.genome.loader.images, bus: o.bus, episodeKey: o.episodeKey, trace });
-  const inner = llmPolicy({ provider, maxTurns: o.genome.loader.maxTurns, maxInputTokens: 3_000_000 });
+  const capTurns = Number(process.env['CREW_MAX_TURNS'] ?? '');
+  const capTokens = Number(process.env['CREW_MAX_INPUT_TOKENS'] ?? '');
+  const inner = llmPolicy({
+    provider,
+    maxTurns: Number.isFinite(capTurns) && capTurns > 0 ? Math.min(capTurns, o.genome.loader.maxTurns) : o.genome.loader.maxTurns,
+    maxInputTokens: Number.isFinite(capTokens) && capTokens > 0 ? capTokens : 3_000_000,
+  });
   const policy: Policy = {
     name: `crew:${o.genome.id}`,
     kind: 'agent',

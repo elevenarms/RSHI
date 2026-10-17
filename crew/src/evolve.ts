@@ -5,14 +5,13 @@
  * The incumbent's validation episodes count as its practice for the next generation.
  */
 
-import type { HarnessGame } from '@spotless/bench';
 import type { EpisodeSummary, Genome, Role, TaskSpec } from './contracts.ts';
 import type { CrewMemory } from './memory/index.ts';
 import type { EventBus } from './bus.ts';
 import { modelFor } from './crusoe.ts';
 import { decide, DEFAULT_MARGIN } from './gatekeeper.ts';
 import { applyEdits, diffGenomes } from './genome.ts';
-import { CONCURRENCY, finalImages, pool, runTask, type Tier } from './runner.ts';
+import { CONCURRENCY, type GamePool, finalImages, pool, runTask, type Tier } from './runner.ts';
 import { critique } from './team/critic.ts';
 import { propose } from './team/coach.ts';
 
@@ -28,7 +27,7 @@ export interface EvolveOptions {
   readonly runDir: string;
   readonly bus: EventBus;
   readonly memory: CrewMemory;
-  readonly game: HarnessGame;
+  readonly game: GamePool;
   /** Train tasks: practice uses seeds [0, practice), validation of generation g uses fresh seeds. */
   readonly tasksFor: (count: number, seedBase: number) => TaskSpec[];
 }
