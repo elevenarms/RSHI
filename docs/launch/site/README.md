@@ -37,7 +37,7 @@ did not replicate; the headline is learned superstitions).
 
 Edited directly in `index.html` (HTML comments mark them):
 
-- `ABSTRACT`: verbatim from docs/crew/paper/main.tex (f7c2479), LaTeX converted to HTML. Re-sync if
+- `ABSTRACT`: verbatim from docs/crew/paper/main.tex (9bc6d4a), LaTeX converted to HTML. Re-sync if
   the paper abstract changes again.
 - `DEMO` (automatic): drop `assets/video/sparkleteam-demo.mp4` (and optionally
   `assets/video/sparkleteam-demo-poster.png`) into the site. `site.js` checks for it with a HEAD
