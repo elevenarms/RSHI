@@ -16,6 +16,24 @@
     })
     .catch(function () { /* opened from file:// or offline: placeholders stay visible */ });
 
+  // Live demo: swap the "coming" slot for a player once assets/video/sparkleteam-demo.mp4 exists,
+  // and point the Video button at it (otherwise it keeps pointing at the full video).
+  var DEMO = 'assets/video/sparkleteam-demo.mp4', DEMO_POSTER = 'assets/video/sparkleteam-demo-poster.png';
+  var slot = document.getElementById('demo-slot');
+  if (slot && window.fetch) {
+    fetch(DEMO, { method: 'HEAD', cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) return;
+      var v = document.createElement('video');
+      v.src = DEMO; v.controls = true; v.playsInline = true; v.preload = 'metadata';
+      v.width = 1920; v.height = 1080;
+      v.setAttribute('aria-label', 'SparkleTeam live demo, 60 seconds');
+      fetch(DEMO_POSTER, { method: 'HEAD', cache: 'no-cache' }).then(function (p) { if (p.ok) v.poster = DEMO_POSTER; }).catch(function () {});
+      slot.innerHTML = ''; slot.appendChild(v);
+      var btn = document.getElementById('video-btn');
+      if (btn) btn.setAttribute('href', DEMO);
+    }).catch(function () {});
+  }
+
   document.querySelectorAll('.copy').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var text = document.getElementById(btn.getAttribute('data-copy')).innerText;

@@ -39,8 +39,13 @@ Edited directly in `index.html` (HTML comments mark them):
 
 - `ABSTRACT`: verbatim from docs/crew/paper/main.tex (f7c2479), LaTeX converted to HTML. Re-sync if
   the paper abstract changes again.
-- `TEASER`: wired to `assets/video/sparkleteam-teaser.mp4` with poster
-  `assets/video/sparkleteam-poster.png`; the reframed cut replaces these files under the same names.
+- `DEMO` (automatic): drop `assets/video/sparkleteam-demo.mp4` (and optionally
+  `assets/video/sparkleteam-demo-poster.png`) into the site. `site.js` checks for it with a HEAD
+  request, replaces the "Demo video: coming" slot with a player and points the Video button at
+  the demo; without it the button points at `assets/video/sparkleteam.mp4`. No HTML edit needed.
+- `TEASER`: deep-dive teaser `assets/video/sparkleteam-teaser.mp4`, poster
+  `assets/video/sparkleteam-poster.png` (1920x1080); full video `assets/video/sparkleteam.mp4`
+  (3:47). If the full video is recut, update "3:47" / "3 min 47 s" in index.html.
 - `SITE_URL`: share-card URLs are absolute for https://elevenarms.github.io/RSHI/.
 
 ## Logos (official sources, unaltered except as noted)
