@@ -5,6 +5,7 @@ import { diffGenomes, wordDiff } from './diff.ts';
 import { championId, evolution, initialState, lineage, liveEpisodes, reduce, ROLE_LIST, type EpisodeView, type MessageView, type StudioState } from './state.ts';
 import { startSource } from './source.ts';
 import { tokenPanel } from './tokens.ts';
+import { modelName } from './models.ts';
 
 const $ = <T extends Element = HTMLElement>(sel: string): T => document.querySelector(sel) as T;
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -65,7 +66,7 @@ function renderHeader(s: StudioState): void {
     byModel.set(m, [...(byModel.get(m) ?? []), r]);
   }
   $('#inference').innerHTML = `<div class="crusoe">CRUSOE<small>MANAGED INFERENCE</small></div><div class="models">${[...byModel]
-    .map(([m, rs]) => `<span>${rs.map((r) => `<i style="color:${COLOR[r]}">${r}</i>`).join('<i>·</i>')} <i>→</i> ${esc(m)}</span>`)
+    .map(([m, rs]) => `<span>${rs.map((r) => `<i style="color:${COLOR[r]}">${r}</i>`).join('<i>·</i>')} <i>→</i> ${esc(modelName(m))}</span>`)
     .join('')}</div>`;
   const t = s.tokens;
   const champ = championId(s);
@@ -152,14 +153,17 @@ function buildGraph(): void {
     const g = document.createElementNS(SVG, 'g');
     g.setAttribute('class', 'node idle');
     const below = y > CY + 10;
-    const ly = below ? 54 : -60;
+    const ly = below ? 52 : -54;
+    const my = below ? y + 84 : y - 84;
     g.innerHTML = `<circle class="halo" cx="${x}" cy="${y}" r="46" fill="${HEX[r]}" opacity="0"/>
       <circle class="node-ring" cx="${x}" cy="${y}" r="34" stroke="${HEX[r]}"/>
       <circle class="spinner" cx="${x}" cy="${y}" r="40" fill="none" stroke="${HEX[r]}" stroke-width="2" stroke-dasharray="20 230" stroke-linecap="round"/>
       ${icon(r, x, y)}
       <text class="node-name" x="${x}" y="${y + ly}" text-anchor="middle">${r}</text>
       <text class="node-status" x="${x}" y="${y + ly + 15}" text-anchor="middle">idle</text>
-      <text class="node-label" x="${x}" y="${y + ly + (below ? 30 : -16)}" text-anchor="middle"></text>`;
+      <text class="node-label" x="${x}" y="${below ? y + 108 : y - 104}" text-anchor="middle"></text>
+      <rect class="model-chip" x="${x}" y="${my - 11}" width="0" height="19" data-cx="${x}"/>
+      <text class="node-model" x="${x}" y="${my + 3}" text-anchor="middle"></text>`;
     ng.appendChild(g);
     nodeEls.set(r, g);
   }
@@ -188,7 +192,23 @@ function renderGraph(s: StudioState): void {
     texts[1]!.textContent = a.status;
     const lbl = a.label.length > 34 ? `${a.label.slice(0, 33)}…` : a.label;
     texts[2]!.textContent = lbl;
+    // The model under the role (from run_started), as a black chip.
+    const mn = modelName(s.run?.models[r]);
+    if (texts[3]!.textContent !== mn) {
+      texts[3]!.textContent = mn;
+      const w = mn ? mn.length * 6.5 + 14 : 0;
+      const rect = g.querySelector<SVGRectElement>('.model-chip')!;
+      rect.setAttribute('width', String(w));
+      rect.setAttribute('x', String(Number(rect.dataset['cx']) - w / 2));
+    }
   }
+  // The compact team list (shown instead of the ring on short screens).
+  const tl = ROLE_LIST.map((r) => {
+    const a = s.agents[r];
+    return `<div class="tr s-${a.status}" style="--c:${COLOR[r]}"><b>${r}</b><span class="st">${a.status}</span><i>${esc(modelName(s.run?.models[r]))}</i><em>${esc(a.label)}</em></div>`;
+  }).join('');
+  const tle = $('#teamlist');
+  if (tle.innerHTML !== tl) tle.innerHTML = tl;
   const ph = s.phase;
   $('#core-gen').textContent = ph ? (ph.phase === 'exam' || ph.phase === 'done' ? (ph.phase === 'exam' ? 'EXAM' : 'DONE') : `G${ph.generation}`) : 'G0';
   $('#core-sub').textContent = ph ? ph.phase : 'waiting';
@@ -312,8 +332,10 @@ function renderLive(s: StudioState): void {
     c.el.className = `card ${big ? 'big' : 'small'} ${!big && e.finishedAt ? 'leaving' : ''} ${loading ? 'loading' : ''}`;
     // The page renders at the big size (below the card's header strip); thumbnails are scaled down copies.
     const scale = rect.w / W;
-    const HDR = 46;
-    Object.assign(c.frame.style, { width: `${W}px`, height: `${bigH - HDR}px`, top: big ? `${HDR}px` : '0px', transform: `scale(${scale})` });
+    const HDR = innerHeight <= 900 ? 36 : 46;
+    // The game page draws its own heading at the top; the card's strip shows the title, so that band is cropped off.
+    const CROP = 80;
+    Object.assign(c.frame.style, { width: `${W}px`, height: `${bigH - HDR + CROP}px`, top: big ? `${HDR - CROP}px` : `${-CROP * scale}px`, transform: `scale(${scale})` });
     const sig = `${big}|${e.stream.length}|${e.finishedAt}|${e.wash}`;
     if (sig !== c.sig) {
       c.sig = sig;
@@ -379,10 +401,14 @@ const short = (a: unknown): string => {
 let evoSig = '';
 function renderEvolution(s: StudioState): void {
   const pts = evolution(s);
-  const sig = JSON.stringify(pts) + Object.keys(s.genomes).length + Object.values(s.genomes).map((g) => g.status).join();
+  const cb = $('#chart').getBoundingClientRect();
+  const sig = `${Math.round(cb.width)}x${Math.round(cb.height)}` + JSON.stringify(pts) + Object.keys(s.genomes).length + Object.values(s.genomes).map((g) => g.status).join();
   if (sig === evoSig) return;
   evoSig = sig;
-  const W = 520, H = 300, L = 44, Rr = 16, T = 22, B = 34;
+  // Drawn at the element's own pixel size, so the type stays readable however small the panel is.
+  const box = $('#chart').getBoundingClientRect();
+  const W = Math.max(320, Math.round(box.width)), H = Math.max(140, Math.round(box.height)), L = 44, Rr = 16, T = 22, B = 30;
+  $('#chart').setAttribute('viewBox', `0 0 ${W} ${H}`);
   const vals = pts.flatMap((p) => [p.champion, p.candidate ?? p.champion]);
   const lo = Math.max(0, Math.floor((Math.min(...vals, 0.5) - 0.1) * 10) / 10);
   const hi = Math.min(1, Math.ceil((Math.max(...vals, 0.6) + 0.08) * 10) / 10);

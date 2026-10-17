@@ -78,8 +78,8 @@ const RACK_OF: Record<string, readonly [string, string, string]> = {
   ladle: ['cutlery_basket', 'upright', 'flat'],
 };
 
-const MODEL_LOADER = 'meta-llama/Llama-3.3-70B-Instruct';
-const MODEL_THINK = 'deepseek-ai/DeepSeek-R1-0528';
+const MODEL_LOADER = 'nvidia/Nemotron-3.5-Super-VL';
+const MODEL_THINK = 'nvidia/Nemotron-3-Super-120B-A12B';
 const MODEL_FAST = 'Qwen/Qwen3-235B-A22B-Instruct-2507';
 
 function rng(seed: number): () => number {
@@ -190,6 +190,7 @@ export function fakeRun(opts: FakeRunOptions = {}): CrewEvent[] {
     }
     if (genome.team.useMemoryBrief) {
       status(t, 'librarian', 'acting', `brief for ${task.title}`, key);
+      emit(t + 0.55, { type: 'model_turn', episodeKey: key, role: 'librarian', text: `Brief for ${task.title}: the lessons that match its kinds and soils.`, toolCalls: [], tokensIn: 1800, tokensOut: 220, ms: 1500 });
       msg(t + 0.6, 'librarian', 'loader', 'brief', `Memory brief: ${task.title}`, briefText(lessons, task));
       status(t + 0.9, 'librarian', 'idle', 'brief sent');
       t += 1;
@@ -331,7 +332,14 @@ export function fakeRun(opts: FakeRunOptions = {}): CrewEvent[] {
   emit(0, {
     type: 'run_started',
     mode: 'evolve',
-    models: { planner: MODEL_THINK, loader: MODEL_LOADER, critic: MODEL_THINK, coach: MODEL_THINK, gatekeeper: MODEL_FAST, librarian: MODEL_FAST },
+    models: {
+      planner: 'nvidia/Nemotron-3.5-Lightning-30B',
+      loader: 'nvidia/Nemotron-3.5-Super-VL',
+      critic: 'nvidia/Nemotron-3-Nano-Omni-Reasoning-30B',
+      coach: 'nvidia/Nemotron-3-Super-120B-A12B',
+      gatekeeper: 'statistics (local)',
+      librarian: 'nvidia/Nemotron-3-Nano-30B-A3B',
+    },
     trainTasks: TRAIN.map((t) => ({ id: t.id, title: t.title, items: t.kinds.length })),
     testTasks: TEST.map((t) => ({ id: t.id, title: t.title, items: t.kinds.length })),
     generations: 2,
@@ -539,6 +547,7 @@ const REASONING: Record<string, readonly string[]> = {
   ],
   planner: ['Group by rack: heavy pans and plates below, bowls and glasses on top, cutlery last. Watch the tall items against the upper arm. '],
   critic: ['Comparing the outcomes with the placements. Items that held water were all on their side or mouth up. The pan in the corner came out clean. '],
+  librarian: ['Matching lessons to the kinds and soils on this level card. Mugs: mouth down, high confidence. Plates: face the centre arm. ', 'Placement statistics for bowls favour the upper rack mouth down; include them, drop the stale glassware lesson. '],
   coach: ['Looking across the decisions: the last accepted change added structure before play. The failures cluster on preflight; the loader starts washes with a blocked arm. A mandatory check should help without costing much. '],
 };
 

@@ -8,6 +8,7 @@
  */
 
 import type { CrewEvent, Role } from '@spotless/crew/contracts';
+import { modelName } from './models.ts';
 
 type StreamEv = Extract<CrewEvent, { type: 'stream' }>;
 type Channel = StreamEv['channel'];
@@ -126,7 +127,7 @@ export function tokenPanel(root: HTMLElement, meter: HTMLElement): TokenPanel {
   }
 
   const esc = (s: string): string => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
-  const short = (m: string): string => m.split('/').pop()!.replace(/-Instruct.*$/, '');
+  const short = (m: string): string => modelName(m);
 
   let lastMeter = 0;
   let prev = performance.now();
@@ -136,7 +137,7 @@ export function tokenPanel(root: HTMLElement, meter: HTMLElement): TokenPanel {
     if (order.length !== layoutN) {
       layoutN = order.length;
       const n = order.length;
-      grid.dataset['n'] = String(n <= 1 ? 1 : n <= 2 ? 2 : n <= 4 ? 4 : n <= 6 ? 6 : 8);
+      grid.style.gridTemplateColumns = `repeat(${Math.max(1, n)}, minmax(0, 1fr))`;
       empty.style.display = n ? 'none' : '';
     }
     for (const l of order) {
@@ -145,7 +146,7 @@ export function tokenPanel(root: HTMLElement, meter: HTMLElement): TokenPanel {
       l.dirty = false;
       const live = !l.done || l.pending.length > 0;
       l.el.classList.toggle('done', !live);
-      l.head.innerHTML = `<b>${l.role}</b><span>${esc(l.episodeKey)}</span><i>${esc(short(l.model))}</i><em>${Math.round(l.chars / CPT)} tok</em>`;
+      l.head.innerHTML = `<div><b>${l.role}</b><em>${Math.round(l.chars / CPT)} tok</em></div><div><i>${esc(short(l.model))}</i><span>${esc(l.episodeKey.replace(/^(train|eval|exam)-/, ''))}</span></div>`;
       l.body.innerHTML = `<div>${l.segs.map((s) => `<span class="c-${s.ch}">${esc(s.text)}</span>`).join('')}${live ? '<span class="caret"></span>' : ''}</div>`;
     }
     if (now - lastMeter > 250) {
