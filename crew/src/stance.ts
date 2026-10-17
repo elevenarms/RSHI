@@ -71,5 +71,5 @@ export function stanceOf(kind: string, q: readonly number[] | null): string | nu
   if (fromUp >= 160) return 'mouth_down';
   if (fromUp <= 20) return 'mouth_up';
   if (fromUp >= 75 && fromUp <= 105) return 'on_side';
-  return fromUp > 90 ? `tilted_${round15(180 - fromUp)}` : `mouth_up_tilted_${round15(fromUp)}`;
+  return fromUp > 90 ? `mouth_down_tilted_${round15(180 - fromUp)}` : `mouth_up_tilted_${round15(fromUp)}`;
 }

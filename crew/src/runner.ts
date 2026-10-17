@@ -104,7 +104,7 @@ export function summarise(o: { record: any; task: TaskSpec; genome: Genome; purp
     const loaded = rep?.loaded === true || pose !== undefined;
     let rack: string | null = null;
     if (loaded) {
-      rack = floor.has(item.id) ? 'tub_floor' : (o.trace?.locations.get(item.id) ?? lastFrame.get(item.id) ?? null);
+      rack = floor.has(item.id) ? 'tub_floor' : lastFrame.get(item.id) === 'cutlery_basket' ? 'cutlery_basket' : (o.trace?.locations.get(item.id) ?? lastFrame.get(item.id) ?? null);
       if ((rack === null || rack === 'unknown') && pose !== undefined) rack = (pose.position_mm?.[2] ?? 0) > 330 ? 'upper_rack' : 'lower_rack';
     }
     const q = pose?.quat_wxyz ?? null;
