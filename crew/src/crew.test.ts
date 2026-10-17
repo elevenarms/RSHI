@@ -145,3 +145,17 @@ describe('call log and archive', () => {
     expect(() => scanForSecrets('{"auth_header": "none"}', 'f')).not.toThrow();
   });
 });
+
+describe('agent outcomes are not invalid', () => {
+  it('an unwashed load (door blocked by the agent) scores 0 and is valid; a provider error is invalid', async () => {
+    const { summarise } = await import('./runner.ts');
+    const task = trainTasks(1, 0, 6)[0]!;
+    const blocked = { agent: { stopped: 'turn_limit: 40 turns', turns: 40, usage: {} }, wash: null, score: null, policy: { settings: { notes: ['start_cycle by the harness was refused: door_blocked'] } }, events: [] };
+    const s = summarise({ record: blocked, task, genome: base, purpose: 'eval', tier: 'fast', runId: 'r', episodeKey: 'k', trace: null, plan: null, recordPath: null });
+    expect(s.failed).toBe(false);
+    expect(s.share).toBe(0);
+    expect(s.stopped).toContain('not washed');
+    const api = summarise({ record: { ...blocked, agent: { stopped: 'provider_error: rate_limit', turns: 3, usage: {} } }, task, genome: base, purpose: 'eval', tier: 'fast', runId: 'r', episodeKey: 'k', trace: null, plan: null, recordPath: null });
+    expect(api.failed).toBe(true);
+  });
+});

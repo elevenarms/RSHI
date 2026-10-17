@@ -224,7 +224,12 @@ export function summarise(o: { record: any; task: TaskSpec; genome: Genome; purp
   const available = o.task.pointsAvailable;
   const usage = r?.agent?.usage ?? {};
   const byKind = (kind: string): number => (r?.events ?? []).filter((e: any) => e.kind === kind).length;
-  const failed = o.failedReason !== undefined || r?.score == null;
+  // Invalid (replayed, never learned from) only when infrastructure failed: the model's API or the
+  // harness. A load that was not washed because of the agent (nothing loaded, a door it blocked,
+  // the turn limit) is the agent's outcome and scores 0.
+  const agentStopped = String(r?.agent?.stopped ?? '');
+  const failed = o.failedReason !== undefined || agentStopped.startsWith('provider_error') || r?.wash?.status === 'failed';
+  const notWashed = r?.score == null && !failed ? (((r?.policy?.settings?.notes ?? []) as string[])[0] ?? 'no wash') : null;
   return {
     episodeKey: o.episodeKey,
     runId: o.runId,
@@ -242,7 +247,7 @@ export function summarise(o: { record: any; task: TaskSpec; genome: Genome; purp
     itemsLoaded: items.filter((i) => i.loaded).length,
     itemsClean: items.filter((i) => i.clean).length,
     items,
-    stopped: o.failedReason ?? String(r?.agent?.stopped ?? 'unknown'),
+    stopped: o.failedReason ?? `${String(r?.agent?.stopped ?? 'unknown')}${notWashed === null ? '' : `; not washed: ${notWashed.slice(0, 160)}`}`,
     failed,
     turns: Number(r?.agent?.turns ?? 0),
     actions: byKind('action'),
@@ -294,8 +299,9 @@ export async function runTask(o: RunTaskOptions): Promise<EpisodeSummary> {
   try {
     const result = await runEpisode({ game: shard.game, levelId: task.id, policy, seed: 1, outDir, verify: 'none', saveImages: false, log });
     summary = summarise({ record: result.record, task, genome, purpose: o.purpose, tier: o.tier, runId: o.runId, episodeKey, trace, plan, recordPath: result.file });
-    const washFailed = result.record.wash?.status === 'failed' || result.record.score === null;
-    bus?.emit({ type: 'wash', episodeKey, status: washFailed ? 'failed' : 'done', detail: washFailed ? summary.stopped : `${summary.points}/${summary.pointsAvailable} points` });
+    const washFailed = result.record.wash?.status === 'failed';
+    const unwashed = result.record.score === null && !washFailed;
+    bus?.emit({ type: 'wash', episodeKey, status: washFailed ? 'failed' : 'done', detail: washFailed ? summary.stopped : unwashed ? `not washed (agent): 0/${summary.pointsAvailable} points` : `${summary.points}/${summary.pointsAvailable} points` });
   } catch (error) {
     bus?.log(`episode ${episodeKey} failed: ${String(error)}`, 'error');
     summary = summarise({ record: null, task, genome, purpose: o.purpose, tier: o.tier, runId: o.runId, episodeKey, trace, plan, recordPath: null, failedReason: `harness_error: ${String(error).slice(0, 200)}` });

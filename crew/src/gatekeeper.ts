@@ -9,6 +9,7 @@ export const DEFAULT_MARGIN = Number(process.env['CREW_MARGIN'] ?? '0.03');
 
 /** An episode that has no result through no fault of the agent (API failure, harness error). */
 export function isInvalid(s: Pick<EpisodeSummary, 'failed' | 'stopped'>): boolean {
+  // `failed` is set only for infrastructure (runner.ts summarise): the API, the harness, a wash that failed.
   return s.failed;
 }
 
