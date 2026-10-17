@@ -72,3 +72,26 @@ The memory (`.crew/memory-supervl`, 31 episodes, 73 lessons; dump in [`data/memo
 | (left out: cereal bowls 0/21 loaded, ramekins 0/11, mugs 0/9 left out) | Every bowl kind washes clean mouth down | **Missed opportunity**: the largest loss is pieces never loaded |
 
 **Takeaway.** The team's few confident lessons are physically right. The gains it could still make are in what it never tried: loading the bowls it leaves out, and finding a stance for pots.
+
+## FINDING 5: the playbook transfers, a little, to other models (not significant)
+
+The champion's genome (its three rules) and the bare baseline genome, with the loader swapped for other models, on the same 12 held-out drills, once each (run `2026-10-17T22-28-08-transfer`). Both models are text-only, so they got no pictures; both were run with thinking off, or at the model's own default. Lightning was left out because Crusoe was still throttling it (4 of 10 burst calls got through).
+
+| loader | baseline genome | champion genome | Δ [95% CI] | wins/losses/ties | sign p | Wilcoxon p | zero-score episodes |
+|---|---|---|---|---|---|---|---|
+| Deepseek-V4-Flash | 0.436 | 0.586 | +0.150 [-0.093, +0.382] | 8/3/1 | 0.23 | 0.28 | 6/24 |
+| gpt-oss-120b | 0.207 | 0.268 | +0.081 [-0.019, +0.180] | 6/4/1 | 0.75 | 0.23 | 7/24 |
+
+Both models point the same way as an evolved playbook would hope: DeepSeek-V4-Flash gains +0.15 and gpt-oss-120b +0.08. Neither gain is significant at n = 12 (sign test p ≥ 0.23), and a quarter of the episodes scored 0, the same noise as in Finding 2. A rulebook evolved on Super-VL does not hurt other loaders, and may help weaker ones more than it helps the model it was evolved on. That hypothesis needs about 3 times more drills to test. Data: [`data/transfer-analysis.md`](data/transfer-analysis.md).
+
+## Runs and reproduction
+
+| Experiment | Run id(s) (archived in `packages/crew/runs/`) | Script |
+|---|---|---|
+| Finding 1, physics (hollow items) | not an LLM run; data in `data/physics-hollow-*` | `scripts/physics-hollow.ts`, `scripts/analyse-hollow.ts` |
+| Finding 2, exam on 12 drills ×2 | `2026-10-17T21-34-04-exam`, `2026-10-17T21-50-44-exam` | `crew exam --tasks 12 --champion G2-704108`, `scripts/analyse-exam.ts` |
+| Finding 3, ablation | `2026-10-17T21-50-11-ablation` | `scripts/variants.ts ablation 12`, `scripts/analyse-variants.ts` |
+| Finding 4, physics (other kinds) vs memory | data in `data/physics-other-*`, `data/memory-supervl-stats-lessons.txt` | `scripts/physics-other.ts` |
+| Finding 5, transfer | `2026-10-17T22-28-08-transfer` | `scripts/variants.ts transfer 12` |
+
+All runs used a forked copy of `.crew/memory-supervl` (the original was not written), `CREW_MAX_TURNS=40`, `CREW_DRILL_ITEMS=12` and the fast tier. Evolution (E) was not continued: there was no time before the stop.

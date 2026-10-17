@@ -1,0 +1,3306 @@
+{
+ "system": "You are playing Spotless, a game about loading a dishwasher. You play through the tools you are given; there is nobody to ask and nothing else to use.\n\n---\n\nThe game. You are shown a set of dirty items, each worth points, and a dishwasher. It is never possible to fit everything. You choose what goes in and where, each item is placed with real physics (it is lowered, let go, and comes to rest where gravity and friction leave it), and then one wash cycle is simulated: water jets, run-off, soil and detergent. Every item that comes out clean scores its points; an item that is not clean, or that was left out, scores nothing. Your aim is the highest score.\n\nWhat decides the score is your judgement of what to load and how to stand it so that it washes clean. Nothing in the game tells you beforehand how well an item will wash: the tools report positions, contacts and mechanical facts only.\n\n---\n\nHow an episode goes. The level card is at the end of this prompt (get_level returns the same); look at the machine (render; ask for labels and a grid when you need to read positions). Place items; after each placement read how the item came to rest and whether it is stable, and look again when in doubt. You can take items out and place them again. Actions and queries are limited (the result of every action says how many are used); a refused call costs nothing. When you are satisfied, call start_cycle: it pushes the baskets in, freezes the load and washes it. That ends the episode; there is one wash and no second try.\n\nWhat a result tells you. An action answers with what it changed, completely, and not with the whole scene: every item that is new or that moved with its new pose, what went back to the counter, the baskets and options that changed, then the load in a few numbers and the budgets. What is not named is as it was. get_state gives the whole scene, or a part, when you want it.\n\nA long episode. You may make several tool calls in one turn; they are run in the order you give them, on one scene. From time to time the harness takes the oldest calls and their results out of this conversation to keep it short, and puts in their place a note with the scene as it then stood (every item with its pose, as get_state gives it). Nothing of the load is lost by that. What goes is the detail of old results (how an old placement fell, old slot advice, old pictures): look again when you need it.\n\nWork on your own until you have called start_cycle. Do not stop to ask for confirmation.\n\n---\n\nThe rules of this level and the manual of the interface, as every player is shown them. The manual is written for a person at the page as well; where it and the description of a tool say different things about what the tool returns, the description of the tool is right (list_slots with an item_id returns a ranked list of places a screenful at a time, not every slot, and returns the tine rows and slots of a basket as geometry when it is called without an item_id).\n\nLevel: Baking drill #10\n\n12 pieces from \"Baking day\". Load what will come out clean and start the cycle.\n\nScoring. Each item that comes out of the wash clean scores its points; an item that is not clean, or that was left out of the machine, scores nothing. The verdict of the standard inspection decides: the report names the items whose verdict was at the edge of clean, or is provisional, and they count by the verdict given. A graded score is reported beside the points and does not count.\n\nClean. An item is clean when an inspection of the whole item after the cycle finds at most 4 small specks and at most 4 square millimetres of visible soil on it, counting soil that was there before, soil carried onto it from other items, and residue left where dirty water stood. Whether the item is dry is reported and does not count.\n\nBudgets. 400 accepted actions, 300 charged queries, 1 wash. A refused call costs nothing.\n\nEnd. The episode ends when the cycle is started: the baskets are pushed in, the load is frozen and washed once. When the action budget is used up the cycle can still be started with whatever is loaded.\n\nHow the game is played.\n\nFrames. All frames are right-handed with z up. In the tub frame the origin is on the lower spray-arm axis at the tub floor, +x is to the right as you face the open machine and +y towards the back. Each basket has its own frame with the origin at its front-left corner on top of its base grid; the cutlery basket has one too. A position is that of the item's reference point (the centre of its bounding box), in millimetres.\n\nBaskets. A basket can be loaded only while it is pulled out (set_rack with option position); pushed in, it is closed to place. The upper basket, when pulled out, hangs over the lower one, so push it in before reaching the lower basket from above. Items travel with their basket and may shift when it moves.\n\nPlacing. place puts an item at a pose: the pose must not overlap anything, and the item must be able to reach it straight down from above (mode drop), or along insert_dir pushed with a limited force (mode insert, which can nudge neighbours aside). The item is lowered until it touches, let go, and then does whatever gravity and friction make it do. Orientation is a preset of the item plus yaw, pitch and roll in whole degrees, or a quaternion. remove takes an item out again; what leaned on it may fall. An item that ends on the kitchen floor goes back to the counter at once (the action is still charged); one that ends on the open door stays there, and is left out of the wash if it is still neither in a basket nor inside the tub when the cycle starts.\n\nLooking. list_slots with an item_id gives the places suggested for that item in a basket, most useful first and a screenful at a time: for each place the position and orientation in which a hand seats the item there (a plate or a lid with its lower edge between two tines, laid back the way they lean; a piece of cutlery let down by its lower end into a cell of the cutlery basket; a piece that leans on a rest or stands on a shelf, where the basket has one for it) and whether the place is free now. Without an item_id it gives the basket as geometry: its rows of tines and its slots, cells, rests and shelves. A piece that has no places of its own goes wherever a pose is free. preview tests a pose without placing and costs no query, get_state gives every settled pose and contact, check_load pushes the baskets in, turns the spray arms by hand and tests the door and the detergent dispenser. None of these says anything about how well an item will wash.\n\nWashing. start_cycle pushes the baskets in and washes what is loaded on the programme the level card names. Rejected calls cost nothing.\n\n---\n\nLoading guidance, as every player is shown it:\n\nLoading the dishwasher: the manufacturer's advice\n\nThis is the loading advice of the manufacturer's manual for this dishwasher, in short.\n\nWhere things go. Arrange cups, glasses and small items of tableware in the top basket, and pans and plates in the bottom basket. Put heavily soiled tableware, such as pans, in the bottom basket: the spray jet is more powerful there.\n\nWhich way up. Position containers with their openings facing down. Position items with curves or recesses at an angle, so that water can run off; water collects in recesses that face up.\n\nSpace. The spray jets must reach the surfaces of the tableware. Do not place items too close together and do not overfill a basket; avoid points of contact between items.\n\nCutlery. Arrange cutlery in the cutlery basket, unsorted, with the sharp points downwards. Lay long and pointed items flat on the knife shelf of the top basket.\n\nTall, narrow receptacles are not rinsed adequately in the corner areas of a basket, or when they stand at too great an angle.\n\nSpray arms. Do not block the spray arms: make sure that they can turn freely and that nothing hangs or stands in their path. A spray arm that strikes tableware, or cannot turn, leaves remnants of food on the load.\n\nDetergent. The tablet falls from the dispenser in the door into the tablet collecting tray at the front of the top basket. Do not place anything in that tray, and do not block it or the lid of the dispenser with tableware: the lid must be able to open fully, or the detergent is not released.\n\nDoor. Load the baskets so that no item projects and interferes with the closing of the door.\n\nProgramme. The load is washed on Eco 50: a cold pre-rinse, a long wash at 50 degrees C, an intermediate rinse, a hot final rinse and drying, 4 hours 55 minutes in all, with one detergent tablet. The programme runs the same way whatever is loaded: it does not adjust itself to the load or to how dirty it is.\n\nLarge plates. With the top basket at its highest level, the bottom basket takes plates up to 30 cm in diameter and the top basket up to 22 cm; at the middle level 27.5 cm and 24.5 cm; at the lowest level 25 cm and 27 cm.\n\n---\n\nThe level card (the machine, the programme, every kind of item and every item with its soil and points), as get_level returns it:\n\n{\"benchmark_version\":\"spotless-0.2.0/levels-starter\",\"level_id\":\"drill-baking-day-12-s10\",\"title\":\"Baking drill #10\",\"summary\":\"12 pieces from \\\"Baking day\\\". Load what will come out clean and start the cycle.\",\"machine\":{\"machine_id\":\"bosch_smv4hax40g\",\"display_name\":\"Bosch Serie 4 SMV4HAX40G/13\",\"tub_min_mm\":[-272,-235,0],\"tub_max_mm\":[273,265,640],\"racks\":[{\"rack\":\"lower_rack\",\"origin_in_mm\":[-262.5,-262,73],\"origin_out_mm\":[-262.5,-762,73],\"envelope_mm\":[525,512,340],\"low_spots\":[{\"under\":\"upper_arm.hub\",\"clear_height_mm\":292,\"centre_mm\":[262.5,232],\"radius_mm\":24.5},{\"under\":\"upper_arm.blades\",\"clear_height_mm\":313,\"centre_mm\":[262.5,232],\"radius_mm\":230.2}],\"options\":[{\"name\":\"position\",\"description\":\"Whether the basket is pushed into the tub or pulled out over the open door. A basket is loaded from above while it is pulled out; whatever is in it travels with it and may shift.\",\"values\":[\"in\",\"out\"]},{\"name\":\"tine_row_r1\",\"description\":\"Hinged tine row R1: standing up to hold plates, or folded flat to make room for pots and bowls.\",\"values\":[\"up\",\"folded\"]},{\"name\":\"tine_row_r2\",\"description\":\"Hinged tine row R2: standing up to hold plates, or folded flat to make room for pots and bowls.\",\"values\":[\"up\",\"folded\"]}]},{\"rack\":\"cutlery_basket\",\"origin_in_mm\":[-56,-254,73],\"origin_out_mm\":[-56,-754,73],\"envelope_mm\":[128,230,127],\"options\":[{\"name\":\"position\",\"description\":\"Where the loose cutlery basket stands in the lower basket: 'front_centre' (front centre, its centre at x 271 mm, y 123 mm of the rack frame), 'front_right' (front right, its centre at x 373 mm, y 123 mm of the rack frame), 'front_left' (front left, its centre at x 153 mm, y 123 mm of the rack frame), or 'out' when it is taken out of the machine. It can only be moved while it is empty and where nothing stands in its way; the tine slots it stands over cannot be used.\",\"values\":[\"front_centre\",\"front_right\",\"front_left\",\"out\"]}]},{\"rack\":\"upper_rack\",\"origin_in_mm\":[-244,-258,420],\"origin_out_mm\":[-244,-698,420],\"envelope_mm\":[500,498,220],\"low_spots\":[{\"under\":\"roof_sprayer\",\"clear_height_mm\":190,\"centre_mm\":[244,278],\"radius_mm\":26}],\"tablet_tray\":{\"min_mm\":[138.5,0,8],\"max_mm\":[353.5,52,55]},\"options\":[{\"name\":\"position\",\"description\":\"Whether the basket is pushed into the tub or pulled out over the open door. A basket is loaded from above while it is pulled out; whatever is in it travels with it and may shift.\",\"values\":[\"in\",\"out\"]},{\"name\":\"height\",\"description\":\"Height position of the basket. The top of its base grid is 420 mm above the tub floor at '1', 395 mm above the tub floor at '2', 370 mm above the tub floor at '3'. Whatever is in the basket travels with it.\",\"values\":[\"1\",\"2\",\"3\"]},{\"name\":\"tine_row_c_rear\",\"description\":\"Hinged tine row C (rear half, part 12033291): standing up to hold plates, or folded flat to make room for pots and bowls.\",\"values\":[\"up\",\"folded\"]},{\"name\":\"tine_row_c_front\",\"description\":\"Hinged tine row C (front half, part 12033302): standing up to hold plates, or folded flat to make room for pots and bowls.\",\"values\":[\"up\",\"folded\"]},{\"name\":\"shelf_cup_front\",\"description\":\"Folding cup shelf 'cup_front': up against the side of the basket, or down as a second level for cups and a rest for stemware.\",\"values\":[\"up\",\"down\"]},{\"name\":\"shelf_cup_rear\",\"description\":\"Folding cup shelf 'cup_rear': up against the side of the basket, or down as a second level for cups and a rest for stemware.\",\"values\":[\"up\",\"down\"]},{\"name\":\"shelf_knife_shelf\",\"description\":\"Folding holder 'knife_shelf' (knife shelf): folded up out of the way, or down for long knives and utensils laid flat.\",\"values\":[\"up\",\"down\"]}]}],\"spray_arms\":[{\"arm\":\"lower_arm\",\"hub_mm\":[0,0,52],\"radius_mm\":230.3,\"sweep_z_mm\":[0,52]},{\"arm\":\"upper_arm\",\"hub_mm\":[0,-30,399],\"radius_mm\":230.2,\"sweep_z_mm\":[365,399]}],\"dispenser\":{\"lid_sweep_min_mm\":[-47,-273,492.5],\"lid_sweep_max_mm\":[3,-271,562.5]}},\"programme\":{\"programme_id\":\"eco_50\",\"display_name\":\"Eco 50\",\"phases\":[{\"name\":\"pre_rinse\",\"temperature_c\":null,\"duration_s\":960},{\"name\":\"main_wash\",\"temperature_c\":50,\"duration_s\":9676},{\"name\":\"intermediate_rinse\",\"temperature_c\":null,\"duration_s\":660},{\"name\":\"final_rinse\",\"temperature_c\":61,\"duration_s\":963},{\"name\":\"drying\",\"temperature_c\":null,\"duration_s\":5400}],\"detergent\":{\"type\":\"finish_powerball_ultimate\",\"dose_g\":12.9,\"name\":\"Finish Powerball Ultimate\"},\"status\":\"scored\",\"note\":\"The programme the level is scored on: fixed and printed, no sensor decisions.\"},\"secondary_programmes\":[],\"items_total\":12,\"points_total\":69,\"orientation_presets\":{\"flat\":{\"quat_wxyz\":[1,0,0,0],\"description\":\"lying flat as on a table\"},\"flat_inverted\":{\"quat_wxyz\":[0,1,0,0],\"description\":\"lying flat, turned over\"},\"handle_down\":{\"quat_wxyz\":[0.7071,0,-0.7071,0],\"description\":\"standing in a basket cell with the handle down\"},\"handle_up\":{\"quat_wxyz\":[0.7071,0,0.7071,0],\"description\":\"standing in a basket cell with the handle up\"},\"on_edge\":{\"quat_wxyz\":[0.7071,0.7071,0,0],\"description\":\"lying on its edge in a slot of a cutlery tray\"},\"upright\":{\"quat_wxyz\":[1,0,0,0],\"description\":\"standing as it would on a table\"},\"inverted\":{\"quat_wxyz\":[0,1,0,0],\"description\":\"upside down, resting on its rim\"},\"on_edge_reversed\":{\"quat_wxyz\":[0.7071,-0.7071,0,0],\"description\":\"standing on its edge between tines, upper face towards the back\"},\"leaning\":{\"quat_wxyz\":[0.8192,0.5736,0,0],\"description\":\"on its edge and leaning back 20 degrees, upper face towards the front and slightly up\"},\"on_long_edge\":{\"quat_wxyz\":[0.7071,0.7071,0,0],\"description\":\"standing on a long edge, upper face towards the front\"},\"on_short_edge\":{\"quat_wxyz\":[0.5,0.5,-0.5,0.5],\"description\":\"standing on a short edge, upper face towards the front\"},\"inclined\":{\"quat_wxyz\":[0.3827,0.9239,0,0],\"description\":\"leaning against the tines, opening facing down and to the front at 45 degrees\"},\"inverted_tilted\":{\"quat_wxyz\":[0.1736,0.9848,0,0],\"description\":\"upside down and tilted 20 degrees so that water runs off the base\"},\"on_side\":{\"quat_wxyz\":[0.7071,0.7071,0,0],\"description\":\"lying on its side, opening to the front\"}},\"item_types\":{\"salad_fork\":{\"class\":\"salad_fork\",\"display_name\":\"Salad or cake fork\",\"material\":\"stainless_steel\",\"mass_kg\":0.03,\"bbox_mm\":[156,21,5.9],\"reference_point_mm\":[78,0,2.9],\"dims\":{\"length\":156},\"orientation_presets\":[\"flat\",\"flat_inverted\",\"handle_down\",\"handle_up\",\"on_edge\"]},\"side_plate\":{\"class\":\"side_plate\",\"display_name\":\"Dessert plate, porcelain, 19 cm\",\"material\":\"porcelain_glazed\",\"mass_kg\":0.3,\"bbox_mm\":[190,190,18],\"reference_point_mm\":[0,0,9],\"dims\":{\"diameter\":190,\"height\":18},\"orientation_presets\":[\"upright\",\"inverted\",{\"name\":\"on_edge\",\"quat_wxyz\":[0.7071,0.7071,0,0],\"description\":\"standing on its edge between tines, upper face towards the front\"},\"on_edge_reversed\",\"leaning\"]},\"roasting_tin\":{\"class\":\"roasting_tin\",\"display_name\":\"Roasting tin, stainless steel, 16 in\",\"material\":\"stainless_steel\",\"mass_kg\":2.306,\"bbox_mm\":[427,325,86],\"reference_point_mm\":[0,0,43],\"dims\":{\"length\":427,\"width\":325,\"height\":86},\"orientation_presets\":[\"upright\",\"inverted\",\"on_long_edge\",\"on_short_edge\"]},\"dessert_spoon\":{\"class\":\"dessert_spoon\",\"display_name\":\"Dessert spoon\",\"material\":\"stainless_steel\",\"mass_kg\":0.04,\"bbox_mm\":[160,37,9.6],\"reference_point_mm\":[80,0,4.8],\"dims\":{\"length\":160},\"orientation_presets\":[\"flat\",\"flat_inverted\",\"handle_down\",\"handle_up\",\"on_edge\"]},\"cereal_bowl\":{\"class\":\"cereal_bowl\",\"display_name\":\"Cereal or soup bowl, laminated glass, 16 cm\",\"material\":\"glass_vitrelle\",\"mass_kg\":0.179,\"bbox_mm\":[159,159,51],\"reference_point_mm\":[0,0,25.5],\"dims\":{\"diameter\":159,\"height\":51},\"orientation_presets\":[\"upright\",\"inverted\",\"inclined\",{\"name\":\"on_edge\",\"quat_wxyz\":[0.7071,0.7071,0,0],\"description\":\"standing on its edge between tines, upper face towards the front\"}]},\"tumbler\":{\"class\":\"tumbler\",\"display_name\":\"Tumbler, tempered glass, 360 ml\",\"material\":\"glass_soda_lime\",\"mass_kg\":0.29,\"bbox_mm\":[88,88,124],\"reference_point_mm\":[0,0,62],\"dims\":{\"diameter\":88,\"height\":124},\"orientation_presets\":[\"upright\",\"inverted\",\"inverted_tilted\",\"on_side\"]},\"whisk\":{\"class\":\"whisk\",\"display_name\":\"Balloon whisk, 11 in\",\"material\":\"tpe\",\"mass_kg\":0.109,\"bbox_mm\":[292.1,67,63.6],\"reference_point_mm\":[146,0,31.8],\"dims\":{\"length\":292,\"head_diameter\":67},\"orientation_presets\":[\"flat\",\"handle_down\",\"handle_up\"]}},\"items\":[{\"item_ids\":[\"cake_fork_02\"],\"type\":\"salad_fork\",\"points\":2,\"soils\":[{\"description\":\"Jam between the tines\",\"type\":\"jam\",\"regions\":{\"tines\":0.5},\"amount_g\":0.07,\"age_h\":9,\"heat_history\":\"none\"}]},{\"item_ids\":[\"cake_plate_01\",\"cake_plate_04\"],\"type\":\"side_plate\",\"points\":5,\"soils\":[{\"description\":\"Custard of egg yolk dried to a yellow skin on the plate, overnight\",\"type\":\"egg_yolk_dried\",\"regions\":{\"well\":0.3},\"amount_g\":0.69,\"age_h\":9,\"heat_history\":\"none\"},{\"description\":\"Jam and sponge crumbs\",\"type\":\"jam\",\"regions\":{\"well\":0.2},\"amount_g\":0.31,\"age_h\":9,\"heat_history\":\"none\"}]},{\"item_ids\":[\"cake_tin_01\"],\"type\":\"roasting_tin\",\"points\":12,\"soils\":[{\"description\":\"The tin the sponge was baked in: butter and crumbs up the sides\",\"type\":\"butter_margarine\",\"regions\":{\"interior\":0.5},\"amount_g\":1.13,\"age_h\":9,\"heat_history\":\"none\"}]},{\"item_ids\":[\"dessert_spoon_02\",\"dessert_spoon_04\"],\"type\":\"dessert_spoon\",\"points\":2,\"soils\":[{\"description\":\"Cream in the bowl of the spoon\",\"type\":\"cream\",\"regions\":{\"bowl\":0.5},\"amount_g\":0.04,\"age_h\":9,\"heat_history\":\"none\"}]},{\"item_ids\":[\"pudding_bowl_01\",\"pudding_bowl_02\",\"pudding_bowl_04\"],\"type\":\"cereal_bowl\",\"points\":6,\"soils\":[{\"description\":\"Rice pudding dried in a film up the inside of the bowl, overnight\",\"type\":\"rice_starch\",\"regions\":{\"interior\":0.3},\"amount_g\":0.22,\"age_h\":9,\"heat_history\":\"cooked\"}]},{\"item_ids\":[\"smoothie_glass_05\",\"smoothie_glass_06\"],\"type\":\"tumbler\",\"points\":9,\"soils\":[{\"description\":\"A thick smoothie of avocado and banana, dried in a band up the inside of the glass, overnight\",\"type\":\"avocado\",\"regions\":{\"interior\":0.3},\"amount_g\":1.1,\"age_h\":9,\"heat_history\":\"none\"}]},{\"item_ids\":[\"whisk_01\"],\"type\":\"whisk\",\"points\":5,\"soils\":[{\"description\":\"Whipped cream dried on the wires\",\"type\":\"cream\",\"regions\":{\"wires\":0.5},\"amount_g\":0.27,\"age_h\":9,\"heat_history\":\"none\"}]}]}",
+ "system_digest": "sha256:e2dbf79d7e6671cf15e7239d9c4de41035a698108126dacd6b4cc49f1faab6be",
+ "tools": [
+  "place",
+  "remove",
+  "reset",
+  "set_rack",
+  "start_cycle",
+  "get_level",
+  "get_item",
+  "get_state",
+  "render",
+  "preview",
+  "list_slots",
+  "check_load",
+  "get_report"
+ ],
+ "fixed_characters": {
+  "letters": 41121,
+  "digits": 995,
+  "other": 14572
+ },
+ "history": [
+  {
+   "role": "user",
+   "text": "The level is set up and the dishwasher is open. Load it and start the cycle."
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b2a103f0d7cee3b1",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b2a103f0d7cee3b1",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"tine_rows\":{\"columns\":[\"id\",\"start_mm\",\"end_mm\",\"tines\",\"pitch_mm\",\"height_mm\",\"lean_deg\",\"lean_toward\",\"folded\",\"partner\"],\"rows\":[[\"tine_row_r1\",[54.5,423,11],[464.5,423,11],23,18.6,77,15,\"mixed\",false,\"tine_row_r2\"],[\"tine_row_r2\",[54.5,324,11],[464.5,324,11],23,18.6,77,15,\"mixed\",false,\"tine_row_r1\"],[\"tine_row_ml\",[56.5,176,11],[212.5,176,11],7,26,92,17,\"-x\",false,\"tine_row_fl\"],[\"tine_row_mr\",[312.5,176,11],[468.5,176,11],7,26,92,17,\"+x\",false,\"tine_row_fr\"],[\"tine_row_fl\",[61.5,70,11],[189.5,70,11],6,25.6,92,17,\"-x\",false,\"tine_row_ml\"],[\"tine_row_fr\",[335.5,70,11],[463.5,70,11],6,25.6,92,17,\"+x\",false,\"tine_row_mr\"]]},\"slots_total\":66,\"slots_by_kind\":{\"plate_slot\":64,\"wide_slot\":2},\"offset\":0,\"slots\":{\"columns\":[\"id\",\"kind\",\"centre_mm\",\"width_mm\",\"size_mm\"],\"rows\":[[\"tine_row_r1.slot_00\",\"plate_slot\",[63.6,423,11],14.2,null],[\"tine_row_r1.slot_01\",\"plate_slot\",[81.9,423,11],14.3,null],[\"tine_row_r1.slot_02\",\"plate_slot\",[100.1,423,11],14.3,null],[\"tine_row_r1.slot_03\",\"plate_slot\",[118.4,423,11],14.3,null],[\"tine_row_r1.slot_04\",\"plate_slot\",[136.6,423,11],14.2,null],[\"tine_row_r1.slot_05\",\"plate_slot\",[154.9,423,11],14.3,null],[\"tine_row_r1.slot_06\",\"plate_slot\",[173.1,423,11],14.2,null],[\"tine_row_r1.slot_07\",\"plate_slot\",[191.4,423,11],14.3,null],[\"tine_row_r1.slot_08\",\"plate_slot\",[209.6,423,11],14.2,null],[\"tine_row_r1.slot_09\",\"plate_slot\",[227.9,423,11],14.2,null],[\"tine_row_r1.slot_10\",\"plate_slot\",[246.1,423,11],14.2,null],[\"tine_row_r1.slot_11\",\"plate_slot\",[264.4,423,11],14.3,null]]},\"next_offset\":12,\"budget\":{\"queries\":\"1/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-901df921c7d12b22",
+     "name": "set_rack",
+     "arguments": {
+      "rack": "lower_rack",
+      "option": {
+       "name": "position",
+       "value": "out"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-901df921c7d12b22",
+     "name": "set_rack",
+     "is_error": true,
+     "text": "{\"accepted\":false,\"reason\":\"invalid_argument\",\"detail\":\"the lower_rack is already out\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8bfc8b9dcf57b562",
+     "name": "get_state",
+     "arguments": {
+      "rack": "lower_rack"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8bfc8b9dcf57b562",
+     "name": "get_state",
+     "is_error": false,
+     "text": "{\"state_hash\":\"468207c53877\",\"phase\":\"loading\",\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"in\"},\"rack_options\":{\"lower_rack.tine_row_r1\":\"up\",\"lower_rack.tine_row_r2\":\"up\",\"upper_rack.height\":\"1\",\"upper_rack.tine_row_c_rear\":\"up\",\"upper_rack.tine_row_c_front\":\"up\",\"upper_rack.shelf_cup_front\":\"up\",\"upper_rack.shelf_cup_rear\":\"up\",\"upper_rack.shelf_knife_shelf\":\"down\",\"cutlery_basket.position\":\"front_centre\"},\"placed\":{\"columns\":[\"item_id\",\"frame\",\"position_mm\",\"quat_wxyz\",\"stable\",\"touches\",\"location\"],\"rows\":[]},\"placed_total\":0,\"part\":{\"rack\":\"lower_rack\"},\"budget\":{\"actions\":\"0/400\",\"queries\":\"2/300\",\"washes\":\"0/1\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-abcf6ce2ebd39afa",
+     "name": "set_rack",
+     "arguments": {
+      "rack": "upper_rack",
+      "option": {
+       "name": "position",
+       "value": "out"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-abcf6ce2ebd39afa",
+     "name": "set_rack",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"state\":{\"state_hash\":\"8f3d6ea06299\",\"phase\":\"loading\",\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"},\"rack_options\":{\"lower_rack.tine_row_r1\":\"up\",\"lower_rack.tine_row_r2\":\"up\",\"upper_rack.height\":\"1\",\"upper_rack.tine_row_c_rear\":\"up\",\"upper_rack.tine_row_c_front\":\"up\",\"upper_rack.shelf_cup_front\":\"up\",\"upper_rack.shelf_cup_rear\":\"up\",\"upper_rack.shelf_knife_shelf\":\"down\",\"cutlery_basket.position\":\"front_centre\"},\"placed\":{\"columns\":[\"item_id\",\"frame\",\"position_mm\",\"quat_wxyz\",\"stable\",\"touches\",\"location\"],\"rows\":[]},\"placed_total\":0,\"unplaced\":[\"cake_fork_02\",\"cake_plate_01\",\"cake_plate_04\",\"cake_tin_01\",\"dessert_spoon_02\",\"dessert_spoon_04\",\"pudding_bowl_01\",\"pudding_bowl_02\",\"pudding_bowl_04\",\"smoothie_glass_05\",\"smoothie_glass_06\",\"whisk_01\"],\"budget\":{\"actions\":\"1/400\",\"queries\":\"2/300\",\"washes\":\"0/1\"}},\"load\":{\"placed\":0,\"unplaced\":12,\"by_location\":{},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"1/400\",\"queries\":\"2/300\",\"washes\":\"0/1\"},\"state_hash\":\"8f3d6ea06299\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b8806328491232c4",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "cake_plate_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b8806328491232c4",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"cake_plate_01\",\"places_total\":33,\"free_seated\":8,\"free_above_tines\":0,\"not_free\":25,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_00\",[47,374,94],{\"preset\":\"on_edge\",\"roll_deg\":-9,\"yaw_deg\":90},true,\"\"],[\"tine_row_r1+tine_row_r2.slot_01\",[66,374,94],{\"preset\":\"on_edge\",\"roll_deg\":-9,\"yaw_deg\":90},true,\"\"],[\"tine_row_r1+tine_row_r2.slot_21\",[471,374,91],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":-90},true,\"\"],[\"tine_row_ml+tine_row_fl.slot_00\",[51,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":90},true,\"\"],[\"tine_row_ml.slot_01\",[76,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-16,\"yaw_deg\":90},true,\"\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"3/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a11ade3b8355134f",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "cutlery_basket",
+      "item_id": "cake_fork_02"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a11ade3b8355134f",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"cutlery_basket\",\"item_id\":\"cake_fork_02\",\"places_total\":4,\"free_seated\":4,\"free_above_tines\":0,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"cell_c00\",[25,34,94],{\"preset\":\"handle_down\"},true,\"\"],[\"cell_c03\",[25,195,94],{\"preset\":\"handle_down\"},true,\"\"],[\"cell_c10\",[100,34,94],{\"preset\":\"handle_down\"},true,\"\"],[\"cell_c13\",[100,195,94],{\"preset\":\"handle_down\"},true,\"\"]]},\"budget\":{\"queries\":\"4/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-aa22ac7f9655c590",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "cutlery_basket"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-aa22ac7f9655c590",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"cutlery_basket\",\"tine_rows\":{\"columns\":[\"id\",\"start_mm\",\"end_mm\",\"tines\",\"pitch_mm\",\"height_mm\",\"lean_deg\",\"lean_toward\",\"folded\",\"partner\"],\"rows\":[]},\"slots_total\":8,\"slots_by_kind\":{\"basket_cell\":8},\"offset\":0,\"slots\":{\"columns\":[\"id\",\"kind\",\"centre_mm\",\"width_mm\",\"size_mm\"],\"rows\":[[\"cell_c00\",\"basket_cell\",[26.5,33.5,6],39,[49,39]],[\"cell_c01\",\"basket_cell\",[26.5,92.5,6],43,[49,43]],[\"cell_c02\",\"basket_cell\",[26.5,137.5,6],43,[49,43]],[\"cell_c03\",\"basket_cell\",[26.5,202.5,6],49,[49,51]],[\"cell_c10\",\"basket_cell\",[101.5,33.5,6],39,[49,39]],[\"cell_c11\",\"basket_cell\",[101.5,92.5,6],43,[49,43]],[\"cell_c12\",\"basket_cell\",[101.5,137.5,6],43,[49,43]],[\"cell_c13\",\"basket_cell\",[101.5,202.5,6],49,[49,51]]]},\"budget\":{\"queries\":\"5/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-96a6d05148b627e1",
+     "name": "place",
+     "arguments": {
+      "item_id": "cake_fork_02",
+      "frame": "cutlery_basket",
+      "position_mm": [
+       25,
+       34,
+       94
+      ],
+      "orientation": {
+       "preset": "handle_down"
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-96a6d05148b627e1",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"cake_fork_02\",\"released_at\":{\"position_mm\":[25,34,84.3],\"quat_wxyz\":[0.7071,0,-0.7071,0]},\"displacement_mm\":15.3,\"rotation_deg\":11.2,\"settle_time_s\":2.1,\"stable\":true,\"resting\":{\"lowest_point_mm\":6,\"on_base\":true,\"force_over_weight\":1.1},\"contact_forces_N\":{\"cutlery_basket.foot.0.floor\":0.29,\"cutlery_basket.foot.0.left\":0.03},\"changes\":{\"items\":[{\"item_id\":\"cake_fork_02\",\"frame\":\"cutlery_basket\",\"position_mm\":[9.8,34,82.2],\"quat_wxyz\":[0.6347,0,-0.7727,0],\"stable\":true,\"touches\":[\"cutlery_basket.foot.0.floor\",\"cutlery_basket.foot.0.left\"],\"location\":\"lower_rack\"}]},\"load\":{\"placed\":1,\"unplaced\":11,\"by_location\":{\"lower_rack\":1},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"2/400\",\"queries\":\"5/300\",\"washes\":\"0/1\"},\"state_hash\":\"85902842d24f\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b46920adacf54ecb",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "cake_plate_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b46920adacf54ecb",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"cake_plate_01\",\"places_total\":29,\"free_seated\":9,\"free_above_tines\":3,\"not_free\":17,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_c_rear.slot_00\",[339,273,110],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_c_rear.slot_01\",[344,310,107],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_c_rear.slot_02\",[339,347,110],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_c_rear.slot_03\",[344,383,107],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_c_rear.slot_04\",[349,422,105],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"6/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-80d1af68c2c8c17d",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "smoothie_glass_05",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-80d1af68c2c8c17d",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"smoothie_glass_05\",\"places_total\":2,\"free_seated\":1,\"free_above_tines\":0,\"not_free\":1,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"rest_right\",[415,439,89],{\"preset\":\"inverted\",\"roll_deg\":19,\"yaw_deg\":90},true,\"\"],[\"rest_left\",[54,439,82],{\"preset\":\"inverted\",\"roll_deg\":-17,\"yaw_deg\":90},false,\"drop_blocked_by upper_rack_fittings.holder.knife_shelf.floor\"]]},\"budget\":{\"queries\":\"7/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a451e5fd065b642b",
+     "name": "place",
+     "arguments": {
+      "item_id": "cake_plate_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       47,
+       374,
+       94
+      ],
+      "orientation": {
+       "preset": "on_edge",
+       "roll_deg": -9,
+       "yaw_deg": 90
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a451e5fd065b642b",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"cake_plate_01\",\"released_at\":{\"position_mm\":[47,374,92.7],\"quat_wxyz\":[0.5377,0.4592,0.4592,0.5377]},\"displacement_mm\":1.1,\"rotation_deg\":1.4,\"settle_time_s\":0.9,\"stable\":true,\"resting\":{\"lowest_point_mm\":-0.3,\"on_base\":true,\"force_over_weight\":1.8},\"contact_forces_N\":{\"lower_rack.tine_row_r1\":2.62,\"lower_rack.tine_row_r2\":2.64},\"changes\":{\"items\":[{\"item_id\":\"cake_plate_01\",\"frame\":\"lower_rack\",\"position_mm\":[46.3,373.6,92],\"quat_wxyz\":[0.5416,0.4544,0.4516,0.5444],\"stable\":true,\"touches\":[\"lower_rack.tine_row_r1\",\"lower_rack.tine_row_r2\"],\"location\":\"lower_rack\"}]},\"load\":{\"placed\":2,\"unplaced\":10,\"by_location\":{\"lower_rack\":2},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"3/400\",\"queries\":\"7/300\",\"washes\":\"0/1\"},\"state_hash\":\"6ab87c617238\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a38423bc8020307a",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "pudding_bowl_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a38423bc8020307a",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"pudding_bowl_01\",\"places_total\":39,\"free_seated\":0,\"free_above_tines\":0,\"not_free\":39,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_00\",[23,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01, lower_rack.rim\"],[\"tine_row_r1+tine_row_r2.slot_01\",[41,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01\"],[\"tine_row_r1+tine_row_r2.slot_02\",[59,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01\"],[\"tine_row_r1+tine_row_r2.slot_03\",[78,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by upper_rack_fittings.holder.knife_shelf.floor\"],[\"tine_row_r1+tine_row_r2.slot_04\",[96,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by upper_rack_fittings.holder.knife_shelf.rim.right\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"8/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a5d3175bc029fe0c",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       200,
+       250,
+       200
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a5d3175bc029fe0c",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":33.22,\"colliding_with\":[\"cake_plate_01\",\"cutlery_basket.handle.rear\",\"lower_rack.rim\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8742cf250215eeb5",
+     "name": "set_rack",
+     "arguments": {
+      "rack": "upper_rack",
+      "option": {
+       "name": "shelf_knife_shelf",
+       "value": "up"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8742cf250215eeb5",
+     "name": "set_rack",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"changes\":{\"rack_options\":{\"upper_rack.shelf_knife_shelf\":\"up\"}},\"load\":{\"placed\":2,\"unplaced\":10,\"by_location\":{\"lower_rack\":2},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"4/400\",\"queries\":\"8/300\",\"washes\":\"0/1\"},\"state_hash\":\"b896f1017d61\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a907cbca16d8c056",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "cake_plate_01",
+      "limit": 10
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a907cbca16d8c056",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"cake_plate_01\",\"places_total\":22,\"free_seated\":22,\"free_above_tines\":0,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_a+tine_row_b.slot_00\",[162,285,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_01\",[162,318,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_02\",[162,354,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_03\",[162,391,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_04\",[162,424,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_00\",[163,96,95],{\"preset\":\"on_edge\",\"roll_deg\":17,\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_01\",[163,113,92],{\"preset\":\"on_edge\",\"roll_deg\":14,\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_02\",[163,136,98],{\"preset\":\"on_edge\",\"roll_deg\":18,\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_03\",[163,153,95],{\"preset\":\"on_edge\",\"roll_deg\":17,\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_04\",[163,171,95],{\"preset\":\"on_edge\",\"roll_deg\":17,\"yaw_deg\":180},true,\"\"]]},\"next_offset\":10,\"budget\":{\"queries\":\"9/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-bc3ae1fef9a427ae",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "cake_plate_04",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-bc3ae1fef9a427ae",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"cake_plate_04\",\"places_total\":33,\"free_seated\":6,\"free_above_tines\":0,\"not_free\":27,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_21\",[471,374,91],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":-90},true,\"\"],[\"tine_row_ml+tine_row_fl.slot_00\",[51,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":90},true,\"\"],[\"tine_row_ml.slot_01\",[76,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-16,\"yaw_deg\":90},true,\"\"],[\"tine_row_mr.slot_04+tine_row_fr.slot_03\",[450,123,88],{\"preset\":\"on_edge\",\"roll_deg\":-17,\"yaw_deg\":-90},true,\"\"],[\"tine_row_mr.slot_05+tine_row_fr.slot_04\",[474,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":-90},true,\"\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"10/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-bbc91b0f2bf27e8c",
+     "name": "get_state",
+     "arguments": {
+      "rack": "lower_rack"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-bbc91b0f2bf27e8c",
+     "name": "get_state",
+     "is_error": false,
+     "text": "{\"state_hash\":\"b896f1017d61\",\"phase\":\"loading\",\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"},\"rack_options\":{\"lower_rack.tine_row_r1\":\"up\",\"lower_rack.tine_row_r2\":\"up\",\"upper_rack.height\":\"1\",\"upper_rack.tine_row_c_rear\":\"up\",\"upper_rack.tine_row_c_front\":\"up\",\"upper_rack.shelf_cup_front\":\"up\",\"upper_rack.shelf_cup_rear\":\"up\",\"upper_rack.shelf_knife_shelf\":\"up\",\"cutlery_basket.position\":\"front_centre\"},\"placed\":{\"columns\":[\"item_id\",\"frame\",\"position_mm\",\"quat_wxyz\",\"stable\",\"touches\",\"location\"],\"rows\":[[\"cake_fork_02\",\"cutlery_basket\",[9.8,34,82.2],[0.6347,0,-0.7727,0],true,[\"cutlery_basket.foot.0.floor\",\"cutlery_basket.foot.0.left\"],\"lower_rack\"],[\"cake_plate_01\",\"lower_rack\",[46.3,373.6,92],[0.5416,0.4544,0.4516,0.5444],true,[\"lower_rack.tine_row_r1\",\"lower_rack.tine_row_r2\"],\"lower_rack\"]]},\"placed_total\":2,\"part\":{\"rack\":\"lower_rack\"},\"budget\":{\"actions\":\"4/400\",\"queries\":\"11/300\",\"washes\":\"0/1\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b6c1b110176e7769",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "smoothie_glass_05",
+      "limit": 10
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b6c1b110176e7769",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"smoothie_glass_05\",\"places_total\":2,\"free_seated\":2,\"free_above_tines\":0,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"rest_left\",[60,439,84],{\"preset\":\"inverted\",\"roll_deg\":-17,\"yaw_deg\":90},true,\"\"],[\"rest_right\",[415,439,89],{\"preset\":\"inverted\",\"roll_deg\":19,\"yaw_deg\":90},true,\"\"]]},\"budget\":{\"queries\":\"12/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-9ba220f038f562c6",
+     "name": "place",
+     "arguments": {
+      "item_id": "cake_plate_04",
+      "frame": "upper_rack",
+      "position_mm": [
+       339,
+       273,
+       110
+      ],
+      "orientation": {
+       "preset": "on_edge",
+       "yaw_deg": 180
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-9ba220f038f562c6",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"cake_plate_04\",\"released_at\":{\"position_mm\":[339,273,108.4],\"quat_wxyz\":[0,0,0.7071,0.7071]},\"displacement_mm\":24.2,\"rotation_deg\":16.4,\"settle_time_s\":1.2,\"stable\":true,\"resting\":{\"lowest_point_mm\":7.4,\"on_base\":true,\"force_over_weight\":1.5},\"contact_forces_N\":{\"upper_rack.floor.y\":2.66,\"upper_rack.tine_row_c_rear\":1.7},\"changes\":{\"items\":[{\"item_id\":\"cake_plate_04\",\"frame\":\"upper_rack\",\"position_mm\":[351.6,254.8,98.6],\"quat_wxyz\":[0.0623,-0.0639,-0.6214,-0.7784],\"stable\":true,\"touches\":[\"upper_rack.floor.y\",\"upper_rack.tine_row_c_rear\"],\"location\":\"upper_rack\"}]},\"load\":{\"placed\":3,\"unplaced\":9,\"by_location\":{\"lower_rack\":2,\"upper_rack\":1},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"5/400\",\"queries\":\"12/300\",\"washes\":\"0/1\"},\"state_hash\":\"1641064a64f8\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-98dc98da4b888114",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       250,
+       250,
+       200
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-98dc98da4b888114",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":33.22,\"colliding_with\":[\"cutlery_basket.handle.rear\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-816f875b87efc87d",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       250,
+       350,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-816f875b87efc87d",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":38.62,\"colliding_with\":[\"cake_plate_01\",\"cutlery_basket.lid.right\",\"lower_rack.tine_row_r2\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-92c5d900f51ba6fa",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "pudding_bowl_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-92c5d900f51ba6fa",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"pudding_bowl_01\",\"places_total\":39,\"free_seated\":0,\"free_above_tines\":0,\"not_free\":39,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_00\",[23,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01, lower_rack.rim\"],[\"tine_row_r1+tine_row_r2.slot_01\",[41,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01\"],[\"tine_row_r1+tine_row_r2.slot_02\",[59,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01\"],[\"tine_row_r1+tine_row_r2.slot_03\",[78,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by upper_rack.floor.y\"],[\"tine_row_r1+tine_row_r2.slot_04\",[96,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by upper_rack.floor.x\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"13/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b7faa79a645e24ea",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       150,
+       100,
+       150
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b7faa79a645e24ea",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":21.98,\"colliding_with\":[\"cake_fork_02\",\"cutlery_basket.divider\",\"lower_rack.tine_row_ml\",\"lower_rack_fittings.handle\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-bb4cbd4a46bb4835",
+     "name": "place",
+     "arguments": {
+      "item_id": "dessert_spoon_02",
+      "frame": "cutlery_basket",
+      "position_mm": [
+       100,
+       34,
+       94
+      ],
+      "orientation": {
+       "preset": "handle_down"
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-bb4cbd4a46bb4835",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"dessert_spoon_02\",\"released_at\":{\"position_mm\":[100,34,86.3],\"quat_wxyz\":[0.7071,0,-0.7071,0]},\"displacement_mm\":14.7,\"rotation_deg\":27.9,\"settle_time_s\":1.3,\"stable\":true,\"resting\":{\"lowest_point_mm\":5.9,\"on_base\":true,\"force_over_weight\":1.2},\"contact_forces_N\":{\"cutlery_basket.foot.0.floor\":0.39,\"cutlery_basket.foot.0.mid\":0.03,\"cutlery_basket.handle.front\":0.03},\"changes\":{\"items\":[{\"item_id\":\"dessert_spoon_02\",\"frame\":\"cutlery_basket\",\"position_mm\":[85.6,36,84.1],\"quat_wxyz\":[0.6153,0.1251,-0.7572,0.18],\"stable\":true,\"touches\":[\"cutlery_basket.foot.0.floor\",\"cutlery_basket.foot.0.mid\",\"cutlery_basket.handle.front\"],\"location\":\"lower_rack\"}]},\"load\":{\"placed\":4,\"unplaced\":8,\"by_location\":{\"lower_rack\":3,\"upper_rack\":1},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"6/400\",\"queries\":\"13/300\",\"washes\":\"0/1\"},\"state_hash\":\"ad97fe50ba0b\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8ce67ee96fd7a927",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8ce67ee96fd7a927",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"tine_rows\":{\"columns\":[\"id\",\"start_mm\",\"end_mm\",\"tines\",\"pitch_mm\",\"height_mm\",\"lean_deg\",\"lean_toward\",\"folded\",\"partner\"],\"rows\":[[\"tine_row_r1\",[54.5,423,11],[464.5,423,11],23,18.6,77,15,\"mixed\",false,\"tine_row_r2\"],[\"tine_row_r2\",[54.5,324,11],[464.5,324,11],23,18.6,77,15,\"mixed\",false,\"tine_row_r1\"],[\"tine_row_ml\",[56.5,176,11],[212.5,176,11],7,26,92,17,\"-x\",false,\"tine_row_fl\"],[\"tine_row_mr\",[312.5,176,11],[468.5,176,11],7,26,92,17,\"+x\",false,\"tine_row_fr\"],[\"tine_row_fl\",[61.5,70,11],[189.5,70,11],6,25.6,92,17,\"-x\",false,\"tine_row_ml\"],[\"tine_row_fr\",[335.5,70,11],[463.5,70,11],6,25.6,92,17,\"+x\",false,\"tine_row_mr\"]]},\"slots_total\":66,\"slots_by_kind\":{\"plate_slot\":64,\"wide_slot\":2},\"offset\":0,\"slots\":{\"columns\":[\"id\",\"kind\",\"centre_mm\",\"width_mm\",\"size_mm\"],\"rows\":[[\"tine_row_r1.slot_00\",\"plate_slot\",[63.6,423,11],14.2,null],[\"tine_row_r1.slot_01\",\"plate_slot\",[81.9,423,11],14.3,null],[\"tine_row_r1.slot_02\",\"plate_slot\",[100.1,423,11],14.3,null],[\"tine_row_r1.slot_03\",\"plate_slot\",[118.4,423,11],14.3,null],[\"tine_row_r1.slot_04\",\"plate_slot\",[136.6,423,11],14.2,null],[\"tine_row_r1.slot_05\",\"plate_slot\",[154.9,423,11],14.3,null],[\"tine_row_r1.slot_06\",\"plate_slot\",[173.1,423,11],14.2,null],[\"tine_row_r1.slot_07\",\"plate_slot\",[191.4,423,11],14.3,null],[\"tine_row_r1.slot_08\",\"plate_slot\",[209.6,423,11],14.2,null],[\"tine_row_r1.slot_09\",\"plate_slot\",[227.9,423,11],14.2,null],[\"tine_row_r1.slot_10\",\"plate_slot\",[246.1,423,11],14.2,null],[\"tine_row_r1.slot_11\",\"plate_slot\",[264.4,423,11],14.3,null]]},\"next_offset\":12,\"budget\":{\"queries\":\"14/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-af19333033d0f4d3",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "pudding_bowl_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-af19333033d0f4d3",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"pudding_bowl_01\",\"places_total\":29,\"free_seated\":6,\"free_above_tines\":21,\"not_free\":2,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_a+tine_row_b.slot_00\",[162,295,81],{\"preset\":\"on_edge\",\"roll_deg\":20,\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_01\",[162,332,80],{\"preset\":\"on_edge\",\"roll_deg\":24,\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_02\",[162,364,81],{\"preset\":\"on_edge\",\"roll_deg\":20,\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_03\",[162,399,81],{\"preset\":\"on_edge\",\"roll_deg\":19,\"yaw_deg\":180},true,\"\"],[\"tine_row_a.slot_04\",[162,436,81],{\"preset\":\"on_edge\",\"roll_deg\":22,\"yaw_deg\":180},true,\"\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"15/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-ab1422376f74b9a0",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       50,
+       0,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-ab1422376f74b9a0",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":45.08,\"colliding_with\":[\"cake_fork_02\",\"cutlery_basket.foot.0.front\",\"lower_rack.floor.y\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a3d19d77e0f992a7",
+     "name": "place",
+     "arguments": {
+      "item_id": "smoothie_glass_05",
+      "frame": "upper_rack",
+      "position_mm": [
+       60,
+       439,
+       84
+      ],
+      "orientation": {
+       "preset": "inverted",
+       "roll_deg": -17,
+       "yaw_deg": 90
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a3d19d77e0f992a7",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"smoothie_glass_05\",\"released_at\":{\"position_mm\":[60,439,82.6],\"quat_wxyz\":[0.1045,0.6993,0.6993,0.1045]},\"displacement_mm\":2.8,\"rotation_deg\":2.4,\"settle_time_s\":1,\"stable\":true,\"resting\":{\"lowest_point_mm\":8.6,\"on_base\":true,\"force_over_weight\":1.2},\"contact_forces_N\":{\"upper_rack.floor.y\":2.79,\"upper_rack_fittings.holder.knife_shelf.floor\":0.67},\"changes\":{\"items\":[{\"item_id\":\"smoothie_glass_05\",\"frame\":\"upper_rack\",\"position_mm\":[57.6,439,81.3],\"quat_wxyz\":[0.1192,0.697,0.697,0.1192],\"stable\":true,\"touches\":[\"upper_rack.floor.y\",\"upper_rack_fittings.holder.knife_shelf.floor\"],\"location\":\"upper_rack\"}]},\"load\":{\"placed\":5,\"unplaced\":7,\"by_location\":{\"lower_rack\":3,\"upper_rack\":2},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"7/400\",\"queries\":\"15/300\",\"washes\":\"0/1\"},\"state_hash\":\"a1b16e4ce6b6\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-9b54db14bfc4e1ff",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       -150,
+       -80,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-9b54db14bfc4e1ff",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":3.73,\"colliding_with\":[\"lower_rack.wall\"],\"insertable\":false,\"in_bounds\":false,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-ac316b16a2e2af2f",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       100,
+       100,
+       150
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-ac316b16a2e2af2f",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":27.54,\"colliding_with\":[\"cake_fork_02\",\"cutlery_basket.divider\",\"dessert_spoon_02\",\"lower_rack.floor.x\",\"lower_rack_fittings.handle\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8f0c7e243d871877",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "cake_tin_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8f0c7e243d871877",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"cake_tin_01\",\"places_total\":0,\"free_seated\":0,\"free_above_tines\":0,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[]},\"note\":\"No suggested place for this item in this basket: it goes wherever a pose is free (render with grid shows where; preview tests a pose).\",\"budget\":{\"queries\":\"16/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-844d6a962dc2c67b",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       -100,
+       -100,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-844d6a962dc2c67b",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":14.57,\"colliding_with\":[\"lower_rack.wall\"],\"insertable\":false,\"in_bounds\":false,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-bfd343ae2e4b528c",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       400,
+       200,
+       120
+      ],
+      "orientation": {
+       "preset": "inverted"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-bfd343ae2e4b528c",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":45.61,\"colliding_with\":[\"cake_fork_02\",\"cutlery_basket.lid.right\",\"dessert_spoon_02\",\"lower_rack.wall\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b45469ac41dd5088",
+     "name": "place",
+     "arguments": {
+      "item_id": "pudding_bowl_01",
+      "frame": "upper_rack",
+      "position_mm": [
+       162,
+       295,
+       81
+      ],
+      "orientation": {
+       "preset": "on_edge",
+       "roll_deg": 20,
+       "yaw_deg": 180
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b45469ac41dd5088",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"pudding_bowl_01\",\"released_at\":{\"position_mm\":[162,295,81],\"quat_wxyz\":[0,0,0.8192,0.5736]},\"displacement_mm\":1.6,\"rotation_deg\":0.4,\"settle_time_s\":1,\"stable\":true,\"resting\":{\"lowest_point_mm\":-3.5,\"on_base\":true,\"force_over_weight\":1.1},\"contact_forces_N\":{\"upper_rack.tine_row_a\":0.94,\"upper_rack.tine_row_b\":0.93},\"changes\":{\"items\":[{\"item_id\":\"pudding_bowl_01\",\"frame\":\"upper_rack\",\"position_mm\":[162,294.3,79.6],\"quat_wxyz\":[0.0002,0.0001,-0.8169,-0.5767],\"stable\":true,\"touches\":[\"upper_rack.tine_row_a\",\"upper_rack.tine_row_b\"],\"location\":\"upper_rack\"}]},\"load\":{\"placed\":6,\"unplaced\":6,\"by_location\":{\"lower_rack\":3,\"upper_rack\":3},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"8/400\",\"queries\":\"16/300\",\"washes\":\"0/1\"},\"state_hash\":\"d87cd40955d2\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b4368e2f78d870de",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       400,
+       400,
+       200
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b4368e2f78d870de",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":23.04,\"colliding_with\":[\"lower_rack.upright.right\",\"tub.wall.right\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a4d90fd2b17ac57e",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       300,
+       300,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a4d90fd2b17ac57e",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":69.45,\"colliding_with\":[\"cutlery_basket.lid.right\",\"lower_rack.tine_row_r2\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-921a7b5e55bc2005",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       200,
+       200,
+       43
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-921a7b5e55bc2005",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":24.89,\"colliding_with\":[\"cake_fork_02\",\"cake_plate_01\",\"cutlery_basket.foot.0.mid\",\"dessert_spoon_02\",\"lower_rack.tine_row_mr\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8189bb83ed3d8e94",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "pudding_bowl_01"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8189bb83ed3d8e94",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"pudding_bowl_01\",\"places_total\":39,\"free_seated\":5,\"free_above_tines\":34,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_21\",[453,374,81],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":-90},true,\"\"],[\"tine_row_ml+tine_row_fl.slot_03\",[144,123,80],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":90},true,\"\"],[\"tine_row_mr.slot_04+tine_row_fr.slot_03\",[432,123,80],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":-90},true,\"\"],[\"tine_row_fl.slot_01\",[93,123,80],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":90},true,\"\"],[\"tine_row_fr.slot_01\",[381,123,80],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":-90},true,\"\"],[\"tine_row_r1+tine_row_r2.slot_00\",[23,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_01\",[41,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_02\",[59,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_03\",[78,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_04\",[96,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_05\",[114,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_06\",[132,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"]]},\"next_offset\":12,\"budget\":{\"queries\":\"17/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a537580af78805eb",
+     "name": "render",
+     "arguments": {
+      "view": "top_lower",
+      "options": {
+       "labels": true,
+       "grid": true
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a537580af78805eb",
+     "name": "render",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"view\":\"top_lower\",\"image\":{\"mime_type\":\"image/png\",\"width_px\":768,\"height_px\":768},\"budget\":{\"queries\":\"18/300\"}}",
+     "images": [
+      "[png, 768x768, 333816 bytes]"
+     ]
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-9031b19ebe67311b",
+     "name": "place",
+     "arguments": {
+      "item_id": "dessert_spoon_04",
+      "frame": "cutlery_basket",
+      "position_mm": [
+       100,
+       195,
+       94
+      ],
+      "orientation": {
+       "preset": "handle_down"
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-9031b19ebe67311b",
+     "name": "place",
+     "is_error": true,
+     "text": "{\"accepted\":false,\"reason\":\"not_insertable\",\"detail\":\"nothing can come straight down to this pose\",\"blocked_by\":\"upper_rack.floor.y\"}",
+     "images": []
+    }
+   ]
+  }
+ ],
+ "conversation_at_end": [
+  {
+   "role": "user",
+   "text": "The level is set up and the dishwasher is open. Load it and start the cycle."
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b2a103f0d7cee3b1",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b2a103f0d7cee3b1",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"tine_rows\":{\"columns\":[\"id\",\"start_mm\",\"end_mm\",\"tines\",\"pitch_mm\",\"height_mm\",\"lean_deg\",\"lean_toward\",\"folded\",\"partner\"],\"rows\":[[\"tine_row_r1\",[54.5,423,11],[464.5,423,11],23,18.6,77,15,\"mixed\",false,\"tine_row_r2\"],[\"tine_row_r2\",[54.5,324,11],[464.5,324,11],23,18.6,77,15,\"mixed\",false,\"tine_row_r1\"],[\"tine_row_ml\",[56.5,176,11],[212.5,176,11],7,26,92,17,\"-x\",false,\"tine_row_fl\"],[\"tine_row_mr\",[312.5,176,11],[468.5,176,11],7,26,92,17,\"+x\",false,\"tine_row_fr\"],[\"tine_row_fl\",[61.5,70,11],[189.5,70,11],6,25.6,92,17,\"-x\",false,\"tine_row_ml\"],[\"tine_row_fr\",[335.5,70,11],[463.5,70,11],6,25.6,92,17,\"+x\",false,\"tine_row_mr\"]]},\"slots_total\":66,\"slots_by_kind\":{\"plate_slot\":64,\"wide_slot\":2},\"offset\":0,\"slots\":{\"columns\":[\"id\",\"kind\",\"centre_mm\",\"width_mm\",\"size_mm\"],\"rows\":[[\"tine_row_r1.slot_00\",\"plate_slot\",[63.6,423,11],14.2,null],[\"tine_row_r1.slot_01\",\"plate_slot\",[81.9,423,11],14.3,null],[\"tine_row_r1.slot_02\",\"plate_slot\",[100.1,423,11],14.3,null],[\"tine_row_r1.slot_03\",\"plate_slot\",[118.4,423,11],14.3,null],[\"tine_row_r1.slot_04\",\"plate_slot\",[136.6,423,11],14.2,null],[\"tine_row_r1.slot_05\",\"plate_slot\",[154.9,423,11],14.3,null],[\"tine_row_r1.slot_06\",\"plate_slot\",[173.1,423,11],14.2,null],[\"tine_row_r1.slot_07\",\"plate_slot\",[191.4,423,11],14.3,null],[\"tine_row_r1.slot_08\",\"plate_slot\",[209.6,423,11],14.2,null],[\"tine_row_r1.slot_09\",\"plate_slot\",[227.9,423,11],14.2,null],[\"tine_row_r1.slot_10\",\"plate_slot\",[246.1,423,11],14.2,null],[\"tine_row_r1.slot_11\",\"plate_slot\",[264.4,423,11],14.3,null]]},\"next_offset\":12,\"budget\":{\"queries\":\"1/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-901df921c7d12b22",
+     "name": "set_rack",
+     "arguments": {
+      "rack": "lower_rack",
+      "option": {
+       "name": "position",
+       "value": "out"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-901df921c7d12b22",
+     "name": "set_rack",
+     "is_error": true,
+     "text": "{\"accepted\":false,\"reason\":\"invalid_argument\",\"detail\":\"the lower_rack is already out\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8bfc8b9dcf57b562",
+     "name": "get_state",
+     "arguments": {
+      "rack": "lower_rack"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8bfc8b9dcf57b562",
+     "name": "get_state",
+     "is_error": false,
+     "text": "{\"state_hash\":\"468207c53877\",\"phase\":\"loading\",\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"in\"},\"rack_options\":{\"lower_rack.tine_row_r1\":\"up\",\"lower_rack.tine_row_r2\":\"up\",\"upper_rack.height\":\"1\",\"upper_rack.tine_row_c_rear\":\"up\",\"upper_rack.tine_row_c_front\":\"up\",\"upper_rack.shelf_cup_front\":\"up\",\"upper_rack.shelf_cup_rear\":\"up\",\"upper_rack.shelf_knife_shelf\":\"down\",\"cutlery_basket.position\":\"front_centre\"},\"placed\":{\"columns\":[\"item_id\",\"frame\",\"position_mm\",\"quat_wxyz\",\"stable\",\"touches\",\"location\"],\"rows\":[]},\"placed_total\":0,\"part\":{\"rack\":\"lower_rack\"},\"budget\":{\"actions\":\"0/400\",\"queries\":\"2/300\",\"washes\":\"0/1\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-abcf6ce2ebd39afa",
+     "name": "set_rack",
+     "arguments": {
+      "rack": "upper_rack",
+      "option": {
+       "name": "position",
+       "value": "out"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-abcf6ce2ebd39afa",
+     "name": "set_rack",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"state\":{\"state_hash\":\"8f3d6ea06299\",\"phase\":\"loading\",\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"},\"rack_options\":{\"lower_rack.tine_row_r1\":\"up\",\"lower_rack.tine_row_r2\":\"up\",\"upper_rack.height\":\"1\",\"upper_rack.tine_row_c_rear\":\"up\",\"upper_rack.tine_row_c_front\":\"up\",\"upper_rack.shelf_cup_front\":\"up\",\"upper_rack.shelf_cup_rear\":\"up\",\"upper_rack.shelf_knife_shelf\":\"down\",\"cutlery_basket.position\":\"front_centre\"},\"placed\":{\"columns\":[\"item_id\",\"frame\",\"position_mm\",\"quat_wxyz\",\"stable\",\"touches\",\"location\"],\"rows\":[]},\"placed_total\":0,\"unplaced\":[\"cake_fork_02\",\"cake_plate_01\",\"cake_plate_04\",\"cake_tin_01\",\"dessert_spoon_02\",\"dessert_spoon_04\",\"pudding_bowl_01\",\"pudding_bowl_02\",\"pudding_bowl_04\",\"smoothie_glass_05\",\"smoothie_glass_06\",\"whisk_01\"],\"budget\":{\"actions\":\"1/400\",\"queries\":\"2/300\",\"washes\":\"0/1\"}},\"load\":{\"placed\":0,\"unplaced\":12,\"by_location\":{},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"1/400\",\"queries\":\"2/300\",\"washes\":\"0/1\"},\"state_hash\":\"8f3d6ea06299\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b8806328491232c4",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "cake_plate_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b8806328491232c4",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"cake_plate_01\",\"places_total\":33,\"free_seated\":8,\"free_above_tines\":0,\"not_free\":25,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_00\",[47,374,94],{\"preset\":\"on_edge\",\"roll_deg\":-9,\"yaw_deg\":90},true,\"\"],[\"tine_row_r1+tine_row_r2.slot_01\",[66,374,94],{\"preset\":\"on_edge\",\"roll_deg\":-9,\"yaw_deg\":90},true,\"\"],[\"tine_row_r1+tine_row_r2.slot_21\",[471,374,91],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":-90},true,\"\"],[\"tine_row_ml+tine_row_fl.slot_00\",[51,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":90},true,\"\"],[\"tine_row_ml.slot_01\",[76,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-16,\"yaw_deg\":90},true,\"\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"3/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a11ade3b8355134f",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "cutlery_basket",
+      "item_id": "cake_fork_02"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a11ade3b8355134f",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"cutlery_basket\",\"item_id\":\"cake_fork_02\",\"places_total\":4,\"free_seated\":4,\"free_above_tines\":0,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"cell_c00\",[25,34,94],{\"preset\":\"handle_down\"},true,\"\"],[\"cell_c03\",[25,195,94],{\"preset\":\"handle_down\"},true,\"\"],[\"cell_c10\",[100,34,94],{\"preset\":\"handle_down\"},true,\"\"],[\"cell_c13\",[100,195,94],{\"preset\":\"handle_down\"},true,\"\"]]},\"budget\":{\"queries\":\"4/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-aa22ac7f9655c590",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "cutlery_basket"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-aa22ac7f9655c590",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"cutlery_basket\",\"tine_rows\":{\"columns\":[\"id\",\"start_mm\",\"end_mm\",\"tines\",\"pitch_mm\",\"height_mm\",\"lean_deg\",\"lean_toward\",\"folded\",\"partner\"],\"rows\":[]},\"slots_total\":8,\"slots_by_kind\":{\"basket_cell\":8},\"offset\":0,\"slots\":{\"columns\":[\"id\",\"kind\",\"centre_mm\",\"width_mm\",\"size_mm\"],\"rows\":[[\"cell_c00\",\"basket_cell\",[26.5,33.5,6],39,[49,39]],[\"cell_c01\",\"basket_cell\",[26.5,92.5,6],43,[49,43]],[\"cell_c02\",\"basket_cell\",[26.5,137.5,6],43,[49,43]],[\"cell_c03\",\"basket_cell\",[26.5,202.5,6],49,[49,51]],[\"cell_c10\",\"basket_cell\",[101.5,33.5,6],39,[49,39]],[\"cell_c11\",\"basket_cell\",[101.5,92.5,6],43,[49,43]],[\"cell_c12\",\"basket_cell\",[101.5,137.5,6],43,[49,43]],[\"cell_c13\",\"basket_cell\",[101.5,202.5,6],49,[49,51]]]},\"budget\":{\"queries\":\"5/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-96a6d05148b627e1",
+     "name": "place",
+     "arguments": {
+      "item_id": "cake_fork_02",
+      "frame": "cutlery_basket",
+      "position_mm": [
+       25,
+       34,
+       94
+      ],
+      "orientation": {
+       "preset": "handle_down"
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-96a6d05148b627e1",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"cake_fork_02\",\"released_at\":{\"position_mm\":[25,34,84.3],\"quat_wxyz\":[0.7071,0,-0.7071,0]},\"displacement_mm\":15.3,\"rotation_deg\":11.2,\"settle_time_s\":2.1,\"stable\":true,\"resting\":{\"lowest_point_mm\":6,\"on_base\":true,\"force_over_weight\":1.1},\"contact_forces_N\":{\"cutlery_basket.foot.0.floor\":0.29,\"cutlery_basket.foot.0.left\":0.03},\"changes\":{\"items\":[{\"item_id\":\"cake_fork_02\",\"frame\":\"cutlery_basket\",\"position_mm\":[9.8,34,82.2],\"quat_wxyz\":[0.6347,0,-0.7727,0],\"stable\":true,\"touches\":[\"cutlery_basket.foot.0.floor\",\"cutlery_basket.foot.0.left\"],\"location\":\"lower_rack\"}]},\"load\":{\"placed\":1,\"unplaced\":11,\"by_location\":{\"lower_rack\":1},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"2/400\",\"queries\":\"5/300\",\"washes\":\"0/1\"},\"state_hash\":\"85902842d24f\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b46920adacf54ecb",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "cake_plate_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b46920adacf54ecb",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"cake_plate_01\",\"places_total\":29,\"free_seated\":9,\"free_above_tines\":3,\"not_free\":17,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_c_rear.slot_00\",[339,273,110],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_c_rear.slot_01\",[344,310,107],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_c_rear.slot_02\",[339,347,110],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_c_rear.slot_03\",[344,383,107],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_c_rear.slot_04\",[349,422,105],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"6/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-80d1af68c2c8c17d",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "smoothie_glass_05",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-80d1af68c2c8c17d",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"smoothie_glass_05\",\"places_total\":2,\"free_seated\":1,\"free_above_tines\":0,\"not_free\":1,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"rest_right\",[415,439,89],{\"preset\":\"inverted\",\"roll_deg\":19,\"yaw_deg\":90},true,\"\"],[\"rest_left\",[54,439,82],{\"preset\":\"inverted\",\"roll_deg\":-17,\"yaw_deg\":90},false,\"drop_blocked_by upper_rack_fittings.holder.knife_shelf.floor\"]]},\"budget\":{\"queries\":\"7/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a451e5fd065b642b",
+     "name": "place",
+     "arguments": {
+      "item_id": "cake_plate_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       47,
+       374,
+       94
+      ],
+      "orientation": {
+       "preset": "on_edge",
+       "roll_deg": -9,
+       "yaw_deg": 90
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a451e5fd065b642b",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"cake_plate_01\",\"released_at\":{\"position_mm\":[47,374,92.7],\"quat_wxyz\":[0.5377,0.4592,0.4592,0.5377]},\"displacement_mm\":1.1,\"rotation_deg\":1.4,\"settle_time_s\":0.9,\"stable\":true,\"resting\":{\"lowest_point_mm\":-0.3,\"on_base\":true,\"force_over_weight\":1.8},\"contact_forces_N\":{\"lower_rack.tine_row_r1\":2.62,\"lower_rack.tine_row_r2\":2.64},\"changes\":{\"items\":[{\"item_id\":\"cake_plate_01\",\"frame\":\"lower_rack\",\"position_mm\":[46.3,373.6,92],\"quat_wxyz\":[0.5416,0.4544,0.4516,0.5444],\"stable\":true,\"touches\":[\"lower_rack.tine_row_r1\",\"lower_rack.tine_row_r2\"],\"location\":\"lower_rack\"}]},\"load\":{\"placed\":2,\"unplaced\":10,\"by_location\":{\"lower_rack\":2},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"3/400\",\"queries\":\"7/300\",\"washes\":\"0/1\"},\"state_hash\":\"6ab87c617238\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a38423bc8020307a",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "pudding_bowl_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a38423bc8020307a",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"pudding_bowl_01\",\"places_total\":39,\"free_seated\":0,\"free_above_tines\":0,\"not_free\":39,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_00\",[23,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01, lower_rack.rim\"],[\"tine_row_r1+tine_row_r2.slot_01\",[41,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01\"],[\"tine_row_r1+tine_row_r2.slot_02\",[59,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01\"],[\"tine_row_r1+tine_row_r2.slot_03\",[78,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by upper_rack_fittings.holder.knife_shelf.floor\"],[\"tine_row_r1+tine_row_r2.slot_04\",[96,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by upper_rack_fittings.holder.knife_shelf.rim.right\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"8/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a5d3175bc029fe0c",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       200,
+       250,
+       200
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a5d3175bc029fe0c",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":33.22,\"colliding_with\":[\"cake_plate_01\",\"cutlery_basket.handle.rear\",\"lower_rack.rim\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8742cf250215eeb5",
+     "name": "set_rack",
+     "arguments": {
+      "rack": "upper_rack",
+      "option": {
+       "name": "shelf_knife_shelf",
+       "value": "up"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8742cf250215eeb5",
+     "name": "set_rack",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"changes\":{\"rack_options\":{\"upper_rack.shelf_knife_shelf\":\"up\"}},\"load\":{\"placed\":2,\"unplaced\":10,\"by_location\":{\"lower_rack\":2},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"4/400\",\"queries\":\"8/300\",\"washes\":\"0/1\"},\"state_hash\":\"b896f1017d61\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a907cbca16d8c056",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "cake_plate_01",
+      "limit": 10
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a907cbca16d8c056",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"cake_plate_01\",\"places_total\":22,\"free_seated\":22,\"free_above_tines\":0,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_a+tine_row_b.slot_00\",[162,285,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_01\",[162,318,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_02\",[162,354,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_03\",[162,391,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_04\",[162,424,93],{\"preset\":\"on_edge\",\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_00\",[163,96,95],{\"preset\":\"on_edge\",\"roll_deg\":17,\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_01\",[163,113,92],{\"preset\":\"on_edge\",\"roll_deg\":14,\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_02\",[163,136,98],{\"preset\":\"on_edge\",\"roll_deg\":18,\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_03\",[163,153,95],{\"preset\":\"on_edge\",\"roll_deg\":17,\"yaw_deg\":180},true,\"\"],[\"tine_row_a2+tine_row_b2.slot_04\",[163,171,95],{\"preset\":\"on_edge\",\"roll_deg\":17,\"yaw_deg\":180},true,\"\"]]},\"next_offset\":10,\"budget\":{\"queries\":\"9/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-bc3ae1fef9a427ae",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "cake_plate_04",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-bc3ae1fef9a427ae",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"cake_plate_04\",\"places_total\":33,\"free_seated\":6,\"free_above_tines\":0,\"not_free\":27,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_21\",[471,374,91],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":-90},true,\"\"],[\"tine_row_ml+tine_row_fl.slot_00\",[51,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":90},true,\"\"],[\"tine_row_ml.slot_01\",[76,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-16,\"yaw_deg\":90},true,\"\"],[\"tine_row_mr.slot_04+tine_row_fr.slot_03\",[450,123,88],{\"preset\":\"on_edge\",\"roll_deg\":-17,\"yaw_deg\":-90},true,\"\"],[\"tine_row_mr.slot_05+tine_row_fr.slot_04\",[474,123,89],{\"preset\":\"on_edge\",\"roll_deg\":-15,\"yaw_deg\":-90},true,\"\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"10/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-bbc91b0f2bf27e8c",
+     "name": "get_state",
+     "arguments": {
+      "rack": "lower_rack"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-bbc91b0f2bf27e8c",
+     "name": "get_state",
+     "is_error": false,
+     "text": "{\"state_hash\":\"b896f1017d61\",\"phase\":\"loading\",\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"},\"rack_options\":{\"lower_rack.tine_row_r1\":\"up\",\"lower_rack.tine_row_r2\":\"up\",\"upper_rack.height\":\"1\",\"upper_rack.tine_row_c_rear\":\"up\",\"upper_rack.tine_row_c_front\":\"up\",\"upper_rack.shelf_cup_front\":\"up\",\"upper_rack.shelf_cup_rear\":\"up\",\"upper_rack.shelf_knife_shelf\":\"up\",\"cutlery_basket.position\":\"front_centre\"},\"placed\":{\"columns\":[\"item_id\",\"frame\",\"position_mm\",\"quat_wxyz\",\"stable\",\"touches\",\"location\"],\"rows\":[[\"cake_fork_02\",\"cutlery_basket\",[9.8,34,82.2],[0.6347,0,-0.7727,0],true,[\"cutlery_basket.foot.0.floor\",\"cutlery_basket.foot.0.left\"],\"lower_rack\"],[\"cake_plate_01\",\"lower_rack\",[46.3,373.6,92],[0.5416,0.4544,0.4516,0.5444],true,[\"lower_rack.tine_row_r1\",\"lower_rack.tine_row_r2\"],\"lower_rack\"]]},\"placed_total\":2,\"part\":{\"rack\":\"lower_rack\"},\"budget\":{\"actions\":\"4/400\",\"queries\":\"11/300\",\"washes\":\"0/1\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b6c1b110176e7769",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "smoothie_glass_05",
+      "limit": 10
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b6c1b110176e7769",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"smoothie_glass_05\",\"places_total\":2,\"free_seated\":2,\"free_above_tines\":0,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"rest_left\",[60,439,84],{\"preset\":\"inverted\",\"roll_deg\":-17,\"yaw_deg\":90},true,\"\"],[\"rest_right\",[415,439,89],{\"preset\":\"inverted\",\"roll_deg\":19,\"yaw_deg\":90},true,\"\"]]},\"budget\":{\"queries\":\"12/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-9ba220f038f562c6",
+     "name": "place",
+     "arguments": {
+      "item_id": "cake_plate_04",
+      "frame": "upper_rack",
+      "position_mm": [
+       339,
+       273,
+       110
+      ],
+      "orientation": {
+       "preset": "on_edge",
+       "yaw_deg": 180
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-9ba220f038f562c6",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"cake_plate_04\",\"released_at\":{\"position_mm\":[339,273,108.4],\"quat_wxyz\":[0,0,0.7071,0.7071]},\"displacement_mm\":24.2,\"rotation_deg\":16.4,\"settle_time_s\":1.2,\"stable\":true,\"resting\":{\"lowest_point_mm\":7.4,\"on_base\":true,\"force_over_weight\":1.5},\"contact_forces_N\":{\"upper_rack.floor.y\":2.66,\"upper_rack.tine_row_c_rear\":1.7},\"changes\":{\"items\":[{\"item_id\":\"cake_plate_04\",\"frame\":\"upper_rack\",\"position_mm\":[351.6,254.8,98.6],\"quat_wxyz\":[0.0623,-0.0639,-0.6214,-0.7784],\"stable\":true,\"touches\":[\"upper_rack.floor.y\",\"upper_rack.tine_row_c_rear\"],\"location\":\"upper_rack\"}]},\"load\":{\"placed\":3,\"unplaced\":9,\"by_location\":{\"lower_rack\":2,\"upper_rack\":1},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"5/400\",\"queries\":\"12/300\",\"washes\":\"0/1\"},\"state_hash\":\"1641064a64f8\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-98dc98da4b888114",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       250,
+       250,
+       200
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-98dc98da4b888114",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":33.22,\"colliding_with\":[\"cutlery_basket.handle.rear\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-816f875b87efc87d",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       250,
+       350,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-816f875b87efc87d",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":38.62,\"colliding_with\":[\"cake_plate_01\",\"cutlery_basket.lid.right\",\"lower_rack.tine_row_r2\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-92c5d900f51ba6fa",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "pudding_bowl_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-92c5d900f51ba6fa",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"pudding_bowl_01\",\"places_total\":39,\"free_seated\":0,\"free_above_tines\":0,\"not_free\":39,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_00\",[23,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01, lower_rack.rim\"],[\"tine_row_r1+tine_row_r2.slot_01\",[41,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01\"],[\"tine_row_r1+tine_row_r2.slot_02\",[59,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by cake_plate_01\"],[\"tine_row_r1+tine_row_r2.slot_03\",[78,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by upper_rack.floor.y\"],[\"tine_row_r1+tine_row_r2.slot_04\",[96,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},false,\"drop_blocked_by upper_rack.floor.x\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"13/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b7faa79a645e24ea",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       150,
+       100,
+       150
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b7faa79a645e24ea",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":21.98,\"colliding_with\":[\"cake_fork_02\",\"cutlery_basket.divider\",\"lower_rack.tine_row_ml\",\"lower_rack_fittings.handle\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-bb4cbd4a46bb4835",
+     "name": "place",
+     "arguments": {
+      "item_id": "dessert_spoon_02",
+      "frame": "cutlery_basket",
+      "position_mm": [
+       100,
+       34,
+       94
+      ],
+      "orientation": {
+       "preset": "handle_down"
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-bb4cbd4a46bb4835",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"dessert_spoon_02\",\"released_at\":{\"position_mm\":[100,34,86.3],\"quat_wxyz\":[0.7071,0,-0.7071,0]},\"displacement_mm\":14.7,\"rotation_deg\":27.9,\"settle_time_s\":1.3,\"stable\":true,\"resting\":{\"lowest_point_mm\":5.9,\"on_base\":true,\"force_over_weight\":1.2},\"contact_forces_N\":{\"cutlery_basket.foot.0.floor\":0.39,\"cutlery_basket.foot.0.mid\":0.03,\"cutlery_basket.handle.front\":0.03},\"changes\":{\"items\":[{\"item_id\":\"dessert_spoon_02\",\"frame\":\"cutlery_basket\",\"position_mm\":[85.6,36,84.1],\"quat_wxyz\":[0.6153,0.1251,-0.7572,0.18],\"stable\":true,\"touches\":[\"cutlery_basket.foot.0.floor\",\"cutlery_basket.foot.0.mid\",\"cutlery_basket.handle.front\"],\"location\":\"lower_rack\"}]},\"load\":{\"placed\":4,\"unplaced\":8,\"by_location\":{\"lower_rack\":3,\"upper_rack\":1},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"6/400\",\"queries\":\"13/300\",\"washes\":\"0/1\"},\"state_hash\":\"ad97fe50ba0b\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8ce67ee96fd7a927",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8ce67ee96fd7a927",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"tine_rows\":{\"columns\":[\"id\",\"start_mm\",\"end_mm\",\"tines\",\"pitch_mm\",\"height_mm\",\"lean_deg\",\"lean_toward\",\"folded\",\"partner\"],\"rows\":[[\"tine_row_r1\",[54.5,423,11],[464.5,423,11],23,18.6,77,15,\"mixed\",false,\"tine_row_r2\"],[\"tine_row_r2\",[54.5,324,11],[464.5,324,11],23,18.6,77,15,\"mixed\",false,\"tine_row_r1\"],[\"tine_row_ml\",[56.5,176,11],[212.5,176,11],7,26,92,17,\"-x\",false,\"tine_row_fl\"],[\"tine_row_mr\",[312.5,176,11],[468.5,176,11],7,26,92,17,\"+x\",false,\"tine_row_fr\"],[\"tine_row_fl\",[61.5,70,11],[189.5,70,11],6,25.6,92,17,\"-x\",false,\"tine_row_ml\"],[\"tine_row_fr\",[335.5,70,11],[463.5,70,11],6,25.6,92,17,\"+x\",false,\"tine_row_mr\"]]},\"slots_total\":66,\"slots_by_kind\":{\"plate_slot\":64,\"wide_slot\":2},\"offset\":0,\"slots\":{\"columns\":[\"id\",\"kind\",\"centre_mm\",\"width_mm\",\"size_mm\"],\"rows\":[[\"tine_row_r1.slot_00\",\"plate_slot\",[63.6,423,11],14.2,null],[\"tine_row_r1.slot_01\",\"plate_slot\",[81.9,423,11],14.3,null],[\"tine_row_r1.slot_02\",\"plate_slot\",[100.1,423,11],14.3,null],[\"tine_row_r1.slot_03\",\"plate_slot\",[118.4,423,11],14.3,null],[\"tine_row_r1.slot_04\",\"plate_slot\",[136.6,423,11],14.2,null],[\"tine_row_r1.slot_05\",\"plate_slot\",[154.9,423,11],14.3,null],[\"tine_row_r1.slot_06\",\"plate_slot\",[173.1,423,11],14.2,null],[\"tine_row_r1.slot_07\",\"plate_slot\",[191.4,423,11],14.3,null],[\"tine_row_r1.slot_08\",\"plate_slot\",[209.6,423,11],14.2,null],[\"tine_row_r1.slot_09\",\"plate_slot\",[227.9,423,11],14.2,null],[\"tine_row_r1.slot_10\",\"plate_slot\",[246.1,423,11],14.2,null],[\"tine_row_r1.slot_11\",\"plate_slot\",[264.4,423,11],14.3,null]]},\"next_offset\":12,\"budget\":{\"queries\":\"14/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-af19333033d0f4d3",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "upper_rack",
+      "item_id": "pudding_bowl_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-af19333033d0f4d3",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"upper_rack\",\"item_id\":\"pudding_bowl_01\",\"places_total\":29,\"free_seated\":6,\"free_above_tines\":21,\"not_free\":2,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_a+tine_row_b.slot_00\",[162,295,81],{\"preset\":\"on_edge\",\"roll_deg\":20,\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_01\",[162,332,80],{\"preset\":\"on_edge\",\"roll_deg\":24,\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_02\",[162,364,81],{\"preset\":\"on_edge\",\"roll_deg\":20,\"yaw_deg\":180},true,\"\"],[\"tine_row_a+tine_row_b.slot_03\",[162,399,81],{\"preset\":\"on_edge\",\"roll_deg\":19,\"yaw_deg\":180},true,\"\"],[\"tine_row_a.slot_04\",[162,436,81],{\"preset\":\"on_edge\",\"roll_deg\":22,\"yaw_deg\":180},true,\"\"]]},\"next_offset\":5,\"budget\":{\"queries\":\"15/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-ab1422376f74b9a0",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       50,
+       0,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-ab1422376f74b9a0",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":45.08,\"colliding_with\":[\"cake_fork_02\",\"cutlery_basket.foot.0.front\",\"lower_rack.floor.y\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a3d19d77e0f992a7",
+     "name": "place",
+     "arguments": {
+      "item_id": "smoothie_glass_05",
+      "frame": "upper_rack",
+      "position_mm": [
+       60,
+       439,
+       84
+      ],
+      "orientation": {
+       "preset": "inverted",
+       "roll_deg": -17,
+       "yaw_deg": 90
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a3d19d77e0f992a7",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"smoothie_glass_05\",\"released_at\":{\"position_mm\":[60,439,82.6],\"quat_wxyz\":[0.1045,0.6993,0.6993,0.1045]},\"displacement_mm\":2.8,\"rotation_deg\":2.4,\"settle_time_s\":1,\"stable\":true,\"resting\":{\"lowest_point_mm\":8.6,\"on_base\":true,\"force_over_weight\":1.2},\"contact_forces_N\":{\"upper_rack.floor.y\":2.79,\"upper_rack_fittings.holder.knife_shelf.floor\":0.67},\"changes\":{\"items\":[{\"item_id\":\"smoothie_glass_05\",\"frame\":\"upper_rack\",\"position_mm\":[57.6,439,81.3],\"quat_wxyz\":[0.1192,0.697,0.697,0.1192],\"stable\":true,\"touches\":[\"upper_rack.floor.y\",\"upper_rack_fittings.holder.knife_shelf.floor\"],\"location\":\"upper_rack\"}]},\"load\":{\"placed\":5,\"unplaced\":7,\"by_location\":{\"lower_rack\":3,\"upper_rack\":2},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"7/400\",\"queries\":\"15/300\",\"washes\":\"0/1\"},\"state_hash\":\"a1b16e4ce6b6\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-9b54db14bfc4e1ff",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       -150,
+       -80,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-9b54db14bfc4e1ff",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":3.73,\"colliding_with\":[\"lower_rack.wall\"],\"insertable\":false,\"in_bounds\":false,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-ac316b16a2e2af2f",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       100,
+       100,
+       150
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-ac316b16a2e2af2f",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":27.54,\"colliding_with\":[\"cake_fork_02\",\"cutlery_basket.divider\",\"dessert_spoon_02\",\"lower_rack.floor.x\",\"lower_rack_fittings.handle\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8f0c7e243d871877",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "cake_tin_01",
+      "limit": 5
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8f0c7e243d871877",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"cake_tin_01\",\"places_total\":0,\"free_seated\":0,\"free_above_tines\":0,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[]},\"note\":\"No suggested place for this item in this basket: it goes wherever a pose is free (render with grid shows where; preview tests a pose).\",\"budget\":{\"queries\":\"16/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-844d6a962dc2c67b",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       -100,
+       -100,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-844d6a962dc2c67b",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":14.57,\"colliding_with\":[\"lower_rack.wall\"],\"insertable\":false,\"in_bounds\":false,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-bfd343ae2e4b528c",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       400,
+       200,
+       120
+      ],
+      "orientation": {
+       "preset": "inverted"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-bfd343ae2e4b528c",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":45.61,\"colliding_with\":[\"cake_fork_02\",\"cutlery_basket.lid.right\",\"dessert_spoon_02\",\"lower_rack.wall\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b45469ac41dd5088",
+     "name": "place",
+     "arguments": {
+      "item_id": "pudding_bowl_01",
+      "frame": "upper_rack",
+      "position_mm": [
+       162,
+       295,
+       81
+      ],
+      "orientation": {
+       "preset": "on_edge",
+       "roll_deg": 20,
+       "yaw_deg": 180
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b45469ac41dd5088",
+     "name": "place",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"item_id\":\"pudding_bowl_01\",\"released_at\":{\"position_mm\":[162,295,81],\"quat_wxyz\":[0,0,0.8192,0.5736]},\"displacement_mm\":1.6,\"rotation_deg\":0.4,\"settle_time_s\":1,\"stable\":true,\"resting\":{\"lowest_point_mm\":-3.5,\"on_base\":true,\"force_over_weight\":1.1},\"contact_forces_N\":{\"upper_rack.tine_row_a\":0.94,\"upper_rack.tine_row_b\":0.93},\"changes\":{\"items\":[{\"item_id\":\"pudding_bowl_01\",\"frame\":\"upper_rack\",\"position_mm\":[162,294.3,79.6],\"quat_wxyz\":[0.0002,0.0001,-0.8169,-0.5767],\"stable\":true,\"touches\":[\"upper_rack.tine_row_a\",\"upper_rack.tine_row_b\"],\"location\":\"upper_rack\"}]},\"load\":{\"placed\":6,\"unplaced\":6,\"by_location\":{\"lower_rack\":3,\"upper_rack\":3},\"racks\":{\"lower_rack\":\"out\",\"upper_rack\":\"out\"}},\"budget\":{\"actions\":\"8/400\",\"queries\":\"16/300\",\"washes\":\"0/1\"},\"state_hash\":\"d87cd40955d2\"}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-b4368e2f78d870de",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       400,
+       400,
+       200
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-b4368e2f78d870de",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":23.04,\"colliding_with\":[\"lower_rack.upright.right\",\"tub.wall.right\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a4d90fd2b17ac57e",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       300,
+       300,
+       100
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a4d90fd2b17ac57e",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":69.45,\"colliding_with\":[\"cutlery_basket.lid.right\",\"lower_rack.tine_row_r2\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-921a7b5e55bc2005",
+     "name": "preview",
+     "arguments": {
+      "item_id": "cake_tin_01",
+      "frame": "lower_rack",
+      "position_mm": [
+       200,
+       200,
+       43
+      ],
+      "orientation": {
+       "preset": "upright"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-921a7b5e55bc2005",
+     "name": "preview",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"collision_free\":false,\"penetration_mm\":24.89,\"colliding_with\":[\"cake_fork_02\",\"cake_plate_01\",\"cutlery_basket.foot.0.mid\",\"dessert_spoon_02\",\"lower_rack.tine_row_mr\"],\"insertable\":false,\"in_bounds\":true,\"lowered_position_mm\":null}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-8189bb83ed3d8e94",
+     "name": "list_slots",
+     "arguments": {
+      "rack": "lower_rack",
+      "item_id": "pudding_bowl_01"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-8189bb83ed3d8e94",
+     "name": "list_slots",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"rack\":\"lower_rack\",\"item_id\":\"pudding_bowl_01\",\"places_total\":39,\"free_seated\":5,\"free_above_tines\":34,\"not_free\":0,\"offset\":0,\"places\":{\"columns\":[\"slot\",\"position_mm\",\"orientation\",\"drop_free\",\"note\"],\"rows\":[[\"tine_row_r1+tine_row_r2.slot_21\",[453,374,81],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":-90},true,\"\"],[\"tine_row_ml+tine_row_fl.slot_03\",[144,123,80],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":90},true,\"\"],[\"tine_row_mr.slot_04+tine_row_fr.slot_03\",[432,123,80],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":-90},true,\"\"],[\"tine_row_fl.slot_01\",[93,123,80],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":90},true,\"\"],[\"tine_row_fr.slot_01\",[381,123,80],{\"preset\":\"on_edge\",\"roll_deg\":13,\"yaw_deg\":-90},true,\"\"],[\"tine_row_r1+tine_row_r2.slot_00\",[23,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_01\",[41,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_02\",[59,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_03\",[78,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_04\",[96,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_05\",[114,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"],[\"tine_row_r1+tine_row_r2.slot_06\",[132,374,172],{\"preset\":\"on_edge\",\"yaw_deg\":90},true,\"drop_perches: too deep for the gap, would sit on the tine tips\"]]},\"next_offset\":12,\"budget\":{\"queries\":\"17/300\"}}",
+     "images": []
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-a537580af78805eb",
+     "name": "render",
+     "arguments": {
+      "view": "top_lower",
+      "options": {
+       "labels": true,
+       "grid": true
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-a537580af78805eb",
+     "name": "render",
+     "is_error": false,
+     "text": "{\"accepted\":true,\"view\":\"top_lower\",\"image\":{\"mime_type\":\"image/png\",\"width_px\":768,\"height_px\":768},\"budget\":{\"queries\":\"18/300\"}}",
+     "images": [
+      "[png, 768x768, 333816 bytes]"
+     ]
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "text": "",
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-9031b19ebe67311b",
+     "name": "place",
+     "arguments": {
+      "item_id": "dessert_spoon_04",
+      "frame": "cutlery_basket",
+      "position_mm": [
+       100,
+       195,
+       94
+      ],
+      "orientation": {
+       "preset": "handle_down"
+      },
+      "mode": "drop"
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "results": [
+    {
+     "call_id": "chatcmpl-tool-9031b19ebe67311b",
+     "name": "place",
+     "is_error": true,
+     "text": "{\"accepted\":false,\"reason\":\"not_insertable\",\"detail\":\"nothing can come straight down to this pose\",\"blocked_by\":\"upper_rack.floor.y\"}",
+     "images": []
+    }
+   ]
+  }
+ ],
+ "turns": [
+  {
+   "turn": 1,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 11866,
+    "output_tokens": 1087,
+    "cache_read_input_tokens": 720,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1068
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 2,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "set_rack"
+   ],
+   "usage": {
+    "input_tokens": 12559,
+    "output_tokens": 327,
+    "cache_read_input_tokens": 736,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 3,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "get_state"
+   ],
+   "usage": {
+    "input_tokens": 814,
+    "output_tokens": 84,
+    "cache_read_input_tokens": 12560,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 65
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 4,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "set_rack"
+   ],
+   "usage": {
+    "input_tokens": 324,
+    "output_tokens": 935,
+    "cache_read_input_tokens": 13280,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 5,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 660,
+    "output_tokens": 659,
+    "cache_read_input_tokens": 13344,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 640
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 6,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 353,
+    "output_tokens": 1379,
+    "cache_read_input_tokens": 13984,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1360
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 7,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 944,
+    "output_tokens": 733,
+    "cache_read_input_tokens": 13600,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 8,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "place"
+   ],
+   "usage": {
+    "input_tokens": 14154,
+    "output_tokens": 2023,
+    "cache_read_input_tokens": 720,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 2005
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 9,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 695,
+    "output_tokens": 810,
+    "cache_read_input_tokens": 14544,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 10,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 681,
+    "output_tokens": 918,
+    "cache_read_input_tokens": 14848,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 899
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 11,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "place"
+   ],
+   "usage": {
+    "input_tokens": 234,
+    "output_tokens": 965,
+    "cache_read_input_tokens": 15504,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 947
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 12,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 407,
+    "output_tokens": 1103,
+    "cache_read_input_tokens": 15712,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1087
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 13,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 1265,
+    "output_tokens": 873,
+    "cache_read_input_tokens": 15232,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 14,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "set_rack"
+   ],
+   "usage": {
+    "input_tokens": 130,
+    "output_tokens": 1286,
+    "cache_read_input_tokens": 16496,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 15,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 686,
+    "output_tokens": 835,
+    "cache_read_input_tokens": 16096,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 816
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 16,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 530,
+    "output_tokens": 794,
+    "cache_read_input_tokens": 16752,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 775
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 17,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "get_state"
+   ],
+   "usage": {
+    "input_tokens": 357,
+    "output_tokens": 406,
+    "cache_read_input_tokens": 17264,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 390
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 18,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 382,
+    "output_tokens": 1425,
+    "cache_read_input_tokens": 17600,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1409
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 19,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "place"
+   ],
+   "usage": {
+    "input_tokens": 223,
+    "output_tokens": 689,
+    "cache_read_input_tokens": 17952,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 671
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 20,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 404,
+    "output_tokens": 779,
+    "cache_read_input_tokens": 18144,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 764
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 21,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 138,
+    "output_tokens": 642,
+    "cache_read_input_tokens": 18528,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 624
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 22,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 158,
+    "output_tokens": 811,
+    "cache_read_input_tokens": 18640,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 792
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 23,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 392,
+    "output_tokens": 1250,
+    "cache_read_input_tokens": 18768,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1232
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 24,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "place"
+   ],
+   "usage": {
+    "input_tokens": 162,
+    "output_tokens": 1060,
+    "cache_read_input_tokens": 19136,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1042
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 25,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 3073,
+    "output_tokens": 774,
+    "cache_read_input_tokens": 16624,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 26,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 1126,
+    "output_tokens": 379,
+    "cache_read_input_tokens": 19280,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 360
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 27,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 6411,
+    "output_tokens": 1233,
+    "cache_read_input_tokens": 14320,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1215
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 28,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "place"
+   ],
+   "usage": {
+    "input_tokens": 159,
+    "output_tokens": 596,
+    "cache_read_input_tokens": 20704,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 578
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 29,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 873,
+    "output_tokens": 1743,
+    "cache_read_input_tokens": 20384,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1725
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 30,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 1676,
+    "output_tokens": 1065,
+    "cache_read_input_tokens": 19696,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 31,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 283,
+    "output_tokens": 640,
+    "cache_read_input_tokens": 21232,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 624
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 32,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 319,
+    "output_tokens": 1762,
+    "cache_read_input_tokens": 21360,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 33,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 130,
+    "output_tokens": 458,
+    "cache_read_input_tokens": 21664,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 34,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "place"
+   ],
+   "usage": {
+    "input_tokens": 442,
+    "output_tokens": 979,
+    "cache_read_input_tokens": 21488,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 961
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 35,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 517,
+    "output_tokens": 1139,
+    "cache_read_input_tokens": 21792,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 36,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 126,
+    "output_tokens": 1172,
+    "cache_read_input_tokens": 22304,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 37,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "preview"
+   ],
+   "usage": {
+    "input_tokens": 21837,
+    "output_tokens": 1216,
+    "cache_read_input_tokens": 720,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1198
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 38,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "list_slots"
+   ],
+   "usage": {
+    "input_tokens": 176,
+    "output_tokens": 897,
+    "cache_read_input_tokens": 22528,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 878
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 39,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "render"
+   ],
+   "usage": {
+    "input_tokens": 696,
+    "output_tokens": 1313,
+    "cache_read_input_tokens": 22688,
+    "cache_creation_input_tokens": 0,
+    "reasoning_output_tokens": 1298
+   },
+   "folds_so_far": 0
+  },
+  {
+   "turn": 40,
+   "model": "openai/gpt-oss-120b",
+   "stop": "tool_use",
+   "tool_calls": [
+    "place"
+   ],
+   "usage": {
+    "input_tokens": 1065,
+    "output_tokens": 996,
+    "cache_read_input_tokens": 22416,
+    "cache_creation_input_tokens": 0
+   },
+   "folds_so_far": 0
+  }
+ ],
+ "context": {
+  "version": "standard-2",
+  "images_kept": 4,
+  "images_slack": 4,
+  "fold_above_tokens": 12000,
+  "fold_above_note_factor": 2,
+  "keep_recent_tokens": 5000,
+  "hard_limit_tokens": 40000,
+  "request_limit_tokens": 120000,
+  "sizes": "estimated by a fixed rule over characters, the same for every model",
+  "folds": [],
+  "picture_prunings": 0,
+  "largest_request_tokens": 23481,
+  "calls_not_run": 0,
+  "reasoning_blocks_dropped": null
+ },
+ "load_at_end": {
+  "state_hash": "d87cd40955d2",
+  "phase": "loading",
+  "racks": {
+   "lower_rack": "out",
+   "upper_rack": "out"
+  },
+  "rack_options": {
+   "lower_rack.tine_row_r1": "up",
+   "lower_rack.tine_row_r2": "up",
+   "upper_rack.height": "1",
+   "upper_rack.tine_row_c_rear": "up",
+   "upper_rack.tine_row_c_front": "up",
+   "upper_rack.shelf_cup_front": "up",
+   "upper_rack.shelf_cup_rear": "up",
+   "upper_rack.shelf_knife_shelf": "up",
+   "cutlery_basket.position": "front_centre"
+  },
+  "placed": {
+   "columns": [
+    "item_id",
+    "frame",
+    "position_mm",
+    "quat_wxyz",
+    "stable",
+    "touches",
+    "location"
+   ],
+   "rows": [
+    [
+     "cake_fork_02",
+     "cutlery_basket",
+     [
+      9.8,
+      34,
+      82.2
+     ],
+     [
+      0.6347,
+      0,
+      -0.7727,
+      0
+     ],
+     true,
+     [
+      "cutlery_basket.foot.0.floor",
+      "cutlery_basket.foot.0.left"
+     ],
+     "lower_rack"
+    ],
+    [
+     "cake_plate_01",
+     "lower_rack",
+     [
+      46.3,
+      373.6,
+      92
+     ],
+     [
+      0.5416,
+      0.4544,
+      0.4516,
+      0.5444
+     ],
+     true,
+     [
+      "lower_rack.tine_row_r1",
+      "lower_rack.tine_row_r2"
+     ],
+     "lower_rack"
+    ],
+    [
+     "cake_plate_04",
+     "upper_rack",
+     [
+      351.6,
+      254.8,
+      98.6
+     ],
+     [
+      0.0623,
+      -0.0639,
+      -0.6214,
+      -0.7784
+     ],
+     true,
+     [
+      "upper_rack.floor.y",
+      "upper_rack.tine_row_c_rear"
+     ],
+     "upper_rack"
+    ],
+    [
+     "dessert_spoon_02",
+     "cutlery_basket",
+     [
+      85.6,
+      36,
+      84.1
+     ],
+     [
+      0.6153,
+      0.1251,
+      -0.7572,
+      0.18
+     ],
+     true,
+     [
+      "cutlery_basket.foot.0.floor",
+      "cutlery_basket.foot.0.mid",
+      "cutlery_basket.handle.front"
+     ],
+     "lower_rack"
+    ],
+    [
+     "pudding_bowl_01",
+     "upper_rack",
+     [
+      162,
+      294.3,
+      79.6
+     ],
+     [
+      0.0002,
+      0.0001,
+      -0.8169,
+      -0.5767
+     ],
+     true,
+     [
+      "upper_rack.tine_row_a",
+      "upper_rack.tine_row_b"
+     ],
+     "upper_rack"
+    ],
+    [
+     "smoothie_glass_05",
+     "upper_rack",
+     [
+      57.6,
+      439,
+      81.3
+     ],
+     [
+      0.1192,
+      0.697,
+      0.697,
+      0.1192
+     ],
+     true,
+     [
+      "upper_rack.floor.y",
+      "upper_rack_fittings.holder.knife_shelf.floor"
+     ],
+     "upper_rack"
+    ]
+   ]
+  },
+  "placed_total": 6,
+  "unplaced": [
+   "cake_tin_01",
+   "dessert_spoon_04",
+   "pudding_bowl_02",
+   "pudding_bowl_04",
+   "smoothie_glass_06",
+   "whisk_01"
+  ],
+  "budget": {
+   "actions": "8/400",
+   "queries": "18/300",
+   "washes": "0/1"
+  }
+ },
+ "prunings": 0,
+ "truncations": 0
+}
