@@ -304,7 +304,8 @@ function renderLive(s: StudioState): void {
       const el = document.createElement('div');
       el.className = 'card';
       const frame = document.createElement('iframe');
-      frame.src = e.watchUrl;
+      // `&nohud`: the game page hides its own heading (the card's strip shows the title).
+      frame.src = /[#&]nohud\b/.test(e.watchUrl) ? e.watchUrl : `${e.watchUrl}&nohud`;
       frame.setAttribute('allow', 'autoplay');
       const ov = document.createElement('div');
       ov.className = 'ov';
@@ -325,8 +326,8 @@ function renderLive(s: StudioState): void {
     // The page renders at the big size (below the card's header strip); thumbnails are scaled down copies.
     const scale = rect.w / W;
     const HDR = innerHeight <= 900 ? 34 : 40;
-    // The game page draws its own heading at the top; the card's strip shows the title, so that band is cropped off.
-    const CROP = 80;
+    // The page's own heading is hidden with `&nohud`, so nothing needs cropping any more.
+    const CROP = 0;
     Object.assign(c.frame.style, { width: `${W}px`, height: `${bigH - HDR + CROP}px`, top: big ? `${HDR - CROP}px` : `${-CROP * scale}px`, transform: `scale(${scale})` });
     const sig = `${big}|${e.stream.length}|${e.finishedAt}|${e.wash}`;
     if (sig !== c.sig) {
