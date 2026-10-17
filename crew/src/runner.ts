@@ -18,6 +18,7 @@ import { crewLoaderPolicy, type LoaderTrace } from './loader-policy.ts';
 import { stanceOf } from './stance.ts';
 import { taskCard } from './tasks.ts';
 import { makePlan } from './team/planner.ts';
+import { librarianBrief } from './team/librarian.ts';
 
 export type Tier = 'fast' | 'official';
 
@@ -39,7 +40,7 @@ export function gameFor(tier: Tier, tasks: readonly TaskSpec[]): Promise<Harness
   let g = games.get(key);
   if (g === undefined) {
     g = startGame({
-      dataDir: join(CREW_ROOT, `game-${tier}`),
+      dataDir: join(process.env['CREW_GAME_DIR'] ?? CREW_ROOT, `game-${tier}`),
       washTier: tier,
       render: true,
       levels: tasks.map((t) => t.level as Level),
@@ -73,6 +74,9 @@ export async function pool<T, R>(items: readonly T[], n: number, work: (item: T,
 export const CONCURRENCY = Number(process.env['CREW_CONCURRENCY'] ?? '3');
 
 let episodeSeq = 0;
+
+/** Final pictures of each episode's load (episodeKey -> PNGs), for the Critic; dropped once reviewed. */
+export const finalImages = new Map<string, string[]>();
 
 export interface RunTaskOptions {
   readonly game: HarnessGame;
@@ -174,8 +178,7 @@ export async function runTask(o: RunTaskOptions): Promise<EpisodeSummary> {
   const level = task.level as Level;
   let brief: string | null = null;
   if (genome.team.useMemoryBrief && o.memory !== null) {
-    brief = o.memory.briefFor(taskCard(task), genome.team.briefLessons);
-    if (brief.trim() !== '') bus?.emit({ type: 'message', from: 'librarian', to: genome.team.usePlanner ? 'planner' : 'loader', kind: 'brief', title: `Brief for ${task.title}`, body: brief });
+    brief = await librarianBrief({ memory: o.memory, card: taskCard(task), maxLessons: genome.team.briefLessons, bus, to: genome.team.usePlanner ? 'planner' : 'loader', title: `Brief for ${task.title}`, episodeKey });
   }
   const plan = genome.team.usePlanner ? await makePlan({ genome, level, brief, bus, episodeKey }) : null;
   const provider = loaderProvider({ model: genome.loader.model, reasoningEffort: genome.loader.reasoningEffort, episodeKey });
@@ -205,6 +208,7 @@ export async function runTask(o: RunTaskOptions): Promise<EpisodeSummary> {
     bus?.log(`episode ${episodeKey} failed: ${String(error)}`, 'error');
     summary = summarise({ record: null, task, genome, purpose: o.purpose, tier: o.tier, runId: o.runId, episodeKey, trace, plan, recordPath: null, failedReason: `harness_error: ${String(error).slice(0, 200)}` });
   }
+  if (trace.finalImages !== undefined && trace.finalImages.length > 0) finalImages.set(episodeKey, trace.finalImages);
   bus?.emit({ type: 'agent_status', role: 'loader', status: 'done', label: `${task.title}: ${(summary.share * 100).toFixed(0)}%`, episodeKey });
   bus?.emit({ type: 'episode_finished', summary });
   try {

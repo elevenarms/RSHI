@@ -18,10 +18,11 @@ export const CRUSOE_BASE_URL = process.env['CRUSOE_BASE_URL'] ?? 'https://api.in
 
 /** Default models per role (overridable by CREW_MODEL_<ROLE>). */
 export const DEFAULT_MODELS = {
-  loader: 'deepseek-ai/DeepSeek-V4.1-Flash',
-  planner: 'zai-org/GLM-5.3-Flash',
-  critic: 'deepseek-ai/DeepSeek-V4-Pro',
-  coach: 'zai-org/GLM-5.3',
+  loader: 'nvidia/NVIDIA-Nemotron-3.5-Super-VL',
+  planner: 'nvidia/Nemotron-3.5-Lightning-30B-A3B',
+  critic: 'nvidia/Nemotron-3-Nano-Omni-Reasoning-30B-A3B',
+  coach: 'nvidia/NVIDIA-Nemotron-3-Super-120B-A12B',
+  librarian: 'nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B',
 } as const;
 
 export function modelFor(role: keyof typeof DEFAULT_MODELS): string {
@@ -296,6 +297,16 @@ async function readStream(response: Response, body: { model: string; [k: string]
 /** `low` / `high` / a number; null for the model default. Turns into request fields per model. */
 export function reasoningFields(model: string, effort: string | null): Record<string, unknown> {
   const m = model.toLowerCase();
+  if (m.includes('nemotron')) {
+    // The Nemotron cards: thinking via enable_thinking, force_nonempty_content for agents,
+    // sampling temperature 1.0, top_p 0.95. `off` turns thinking off; `low` asks for low effort.
+    const thinking = effort !== 'off' && effort !== '0';
+    return {
+      temperature: 1.0,
+      top_p: 0.95,
+      chat_template_kwargs: { enable_thinking: thinking, force_nonempty_content: true, ...(effort === 'low' ? { low_effort: true } : {}) },
+    };
+  }
   if (m.includes('deepseek-v4.1')) {
     // Numeric effort 1..100; "off" turns thinking off.
     if (effort === null) return {};
@@ -373,6 +384,8 @@ export interface ChatJSONOptions<T> {
   readonly attempts?: number;
   /** The role whose tokens are streamed to the studio; none: not streamed. */
   readonly role?: Role;
+  /** PNG pictures (base64) given with the user message, for a multimodal model. */
+  readonly images?: readonly string[];
 }
 
 export interface ChatJSONResult<T> {
@@ -394,8 +407,12 @@ export async function chatJSON<T = unknown>(o: ChatJSONOptions<T>): Promise<Chat
         { role: 'system', content: o.system },
         {
           role: 'user',
-          content:
+          content: ((text: string) =>
+            (o.images ?? []).length === 0
+              ? text
+              : [{ type: 'text', text }, ...(o.images ?? []).map((data) => ({ type: 'image_url', image_url: { url: `data:image/png;base64,${data}` } }))])(
             i === 0 ? o.user : `${o.user}\n\n(Your previous answer was not a valid JSON object. Answer with the JSON object only.)`,
+          ),
         },
       ],
       max_tokens: o.maxTokens ?? 8000,

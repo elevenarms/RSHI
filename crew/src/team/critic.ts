@@ -18,7 +18,7 @@ function strings(v: unknown): string[] {
   return Array.isArray(v) ? v.map(String).filter((s) => s.trim() !== '').slice(0, 8) : [];
 }
 
-export async function critique(o: { summary: EpisodeSummary; genome: Genome; bus: EventBus | null }): Promise<Critique | null> {
+export async function critique(o: { summary: EpisodeSummary; genome: Genome; bus: EventBus | null; images?: readonly string[] }): Promise<Critique | null> {
   const { summary: s, bus } = o;
   bus?.emit({ type: 'agent_status', role: 'critic', status: 'thinking', label: `reviewing ${s.taskId}`, episodeKey: s.episodeKey });
   try {
@@ -28,6 +28,7 @@ export async function critique(o: { summary: EpisodeSummary; genome: Genome; bus
       s.plan !== null ? `Plan:\n${s.plan}` : 'No plan was used.',
       o.genome.playbook.length > 0 ? `Playbook:\n${o.genome.playbook.map((r) => `- [${r.id}] ${r.text}`).join('\n')}` : 'Playbook: empty.',
       s.loaderNotes.length > 0 ? `Last words of the loader:\n${s.loaderNotes.join('\n---\n').slice(0, 1500)}` : '',
+      (o.images ?? []).length > 0 ? 'The pictures show the final load just before the wash (lower basket, then upper basket).' : '',
       'Give at most 5 lessons, each specific (kind / soil / rack / stance), and tag them with the catalogue kinds, soil ids, racks or stances they are about (lowercase), or "general".',
     ]
       .filter((x) => x !== '')
@@ -35,6 +36,7 @@ export async function critique(o: { summary: EpisodeSummary; genome: Genome; bus
     const r = await chatJSON<Critique>({
       model: modelFor('critic'),
       role: 'critic',
+      ...((o.images ?? []).length > 0 && process.env['CREW_CRITIC_IMAGES'] !== '0' ? { images: o.images } : {}),
       system: o.genome.prompts.critic,
       user,
       maxTokens: 12000,

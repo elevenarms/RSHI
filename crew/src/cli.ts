@@ -88,7 +88,7 @@ async function main(): Promise<void> {
   const concurrency = num(flags, 'concurrency', CONCURRENCY);
   const loaderModel = modelFor('loader');
   const loaderEffort = process.env['CREW_LOADER_EFFORT'] ?? '20';
-  const memory = CrewMemory.open(join(CREW_ROOT, process.env['CREW_FAKE'] === '1' ? 'memory-dry' : 'memory'));
+  const memory = CrewMemory.open(process.env['CREW_MEMORY_DIR'] ?? join(CREW_ROOT, process.env['CREW_FAKE'] === '1' ? 'memory-dry' : 'memory'));
 
   if (cmd === 'tasks') {
     for (const t of [...trainTasks(4, 0), ...testTasks(3, 0)]) console.log(`${t.split}\t${t.id}\t${t.title}\t${t.itemCount} items\t${t.pointsAvailable} pts`);

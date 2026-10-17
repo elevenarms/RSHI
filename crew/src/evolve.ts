@@ -12,7 +12,7 @@ import type { EventBus } from './bus.ts';
 import { modelFor } from './crusoe.ts';
 import { decide, DEFAULT_MARGIN } from './gatekeeper.ts';
 import { applyEdits, diffGenomes } from './genome.ts';
-import { CONCURRENCY, pool, runTask, type Tier } from './runner.ts';
+import { CONCURRENCY, finalImages, pool, runTask, type Tier } from './runner.ts';
 import { critique } from './team/critic.ts';
 import { propose } from './team/coach.ts';
 
@@ -33,7 +33,7 @@ export interface EvolveOptions {
   readonly tasksFor: (count: number, seedBase: number) => TaskSpec[];
 }
 
-export const MODELS = (loader: string): { [r in Role]?: string } => ({ loader, planner: modelFor('planner'), critic: modelFor('critic'), coach: modelFor('coach'), librarian: 'memory (local)', gatekeeper: 'statistics (local)' });
+export const MODELS = (loader: string): { [r in Role]?: string } => ({ loader, planner: modelFor('planner'), critic: modelFor('critic'), coach: modelFor('coach'), librarian: modelFor('librarian'), gatekeeper: 'statistics (local)' });
 
 export function emitMemory(bus: EventBus, memory: CrewMemory): void {
   const snap = memory.snapshot(12);
@@ -43,7 +43,9 @@ export function emitMemory(bus: EventBus, memory: CrewMemory): void {
 async function review(o: EvolveOptions, genome: Genome, summaries: readonly EpisodeSummary[]): Promise<void> {
   const { bus, memory } = o;
   await pool(summaries.filter((s) => !s.failed), o.concurrency ?? CONCURRENCY, async (s) => {
-    const c = await critique({ summary: s, genome, bus });
+    const images = finalImages.get(s.episodeKey);
+    finalImages.delete(s.episodeKey);
+    const c = await critique({ summary: s, genome, bus, ...(images === undefined ? {} : { images }) });
     if (c === null) return;
     bus.emit({ type: 'agent_status', role: 'librarian', status: 'acting', label: `filing ${c.lessons.length} lessons` });
     const touched = memory.addCritique(c);

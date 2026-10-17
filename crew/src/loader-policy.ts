@@ -19,6 +19,8 @@ export interface LoaderTrace {
   readonly locations: Map<string, string>;
   readonly notes: string[];
   refusedStarts: number;
+  /** Pictures of the final load (taken just before start_cycle), base64 PNG, for the Critic. */
+  finalImages?: string[];
 }
 
 export interface CrewLoaderOptions {
@@ -103,6 +105,15 @@ export function wrapTools(tools: EpisodeTools, o: { genome: Genome; bus: EventBu
         const detail = 'preflight: call check_load first (after your last action), fix every problem it reports, then call start_cycle again';
         outcome = { structured: { accepted: false, reason: 'preflight_required', detail }, text: JSON.stringify({ accepted: false, reason: 'preflight_required', detail }), images: [], isError: true };
       } else {
+        if (name === 'start_cycle' && process.env['CREW_CRITIC_IMAGES'] !== '0' && o.trace.finalImages === undefined) {
+          // The final load as the Critic will see it (two queries, never shown to the loader).
+          const shots: string[] = [];
+          for (const view of ['iso_lower', 'iso_upper']) {
+            const shot = await tools.call('render', { view });
+            if (!shot.isError) shots.push(...shot.images);
+          }
+          o.trace.finalImages = shots;
+        }
         outcome = await tools.call(name, args);
         if (!outcome.isError) {
           if (ACTIONS.has(name) && outcome.structured?.['accepted'] !== false) checkedSinceAction = false;
