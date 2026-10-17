@@ -13,7 +13,7 @@
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage{enumitem}
 \usepackage{microtype}
-\usepackage[hidelinks,pdftitle={SparkleTeam: Towards Recursive Self Home Improvement},pdfauthor={Dave Rauchwerk; Claude (Anthropic)}]{hyperref}
+\usepackage[hidelinks,pdftitle={SparkleTeam: Towards Recursive Self Home Improvement (and the Superstitions It Learned on the Way)},pdfauthor={Dave Rauchwerk; Claude (Anthropic)}]{hyperref}
 \usepackage{url}
 \setlist{nosep,leftmargin=1.1em}
 \setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
@@ -73,7 +73,7 @@
 % =====================================================================
 
 \title{\vspace{0.6em}\Large\bfseries \ST: Towards Recursive Self Home Improvement\\[2pt]
-\large\mdseries Lifting a weak open model at dishwasher loading with a self-rewriting team}
+\large\mdseries (and the Superstitions It Learned on the Way)}
 \author{Dave Rauchwerk\\{\small Independent Researcher, \texttt{@\_elevenarms}} \and Claude\\{\small Anthropic}\thanks{Built at the Crusoe $\times$ Cerebral Valley Recursive Agents Hackathon, 17 October 2026. Code: \url{https://github.com/elevenarms/RSHI}.}}
 \date{\vspace{-2.4em}}
 
@@ -89,14 +89,16 @@ A deliberately weak loader (Nemotron-3.5-Super-VL, thinking off) is surrounded b
 a vision critic, a coach and a librarian, all open Nemotron models on Crusoe serverless inference.
 Between generations the team rewrites a typed genome of its own prompts, playbook, tool policy and
 structure, and a deterministic gatekeeper keeps an edit only if it beats the incumbent on paired,
-fresh tasks. On a held-out exam whose levels contain item kinds and soils never seen in training,
-the evolved team scores \ChampionExam{} against \BaselineExam{} for the bare loader
-(\ExamDelta{}\,pp). We report what changed, what it cost, and why the evidence is thin.
+fresh tasks. The system works end to end, and quantifies a known physical effect: a cup stood
+mouth up keeps half its grime. A first held-out exam showed $+17.8$\,pp; a 12-drill replication
+showed $-0.3$\,pp (CI $\pm$13). We trace the gap to learned superstitions: the team accepted one
+rule that is real physics and one that is noise, and the loader's sampling noise made them
+indistinguishable. We give design rules to fix this.
 \end{abstract}
 
 \begin{figure*}[t]
 \centering
-\IfFileExists{figures/studio.png}{\includegraphics[width=0.76\textwidth]{figures/studio.png}}{%
+\IfFileExists{figures/studio.png}{\includegraphics[width=0.72\textwidth]{figures/studio.png}}{%
 \IfFileExists{figures/studio.jpg}{\includegraphics[width=\textwidth]{figures/studio.jpg}}{%
 \fbox{\parbox[c][0.30\textwidth][c]{0.97\textwidth}{\centering\large Studio screenshot goes here: \texttt{figures/studio.png}}}}}
 \caption{The Studio, the live visualizer of \ST{}, during the exam of the final run: TEAM (the roles
@@ -141,16 +143,18 @@ none scores whether the items come out clean, the gap DishwasherBench fills.
 The benchmark, simulator, calibration, levels and harness are Composo's work
 \citep{composo2026dishwasherbench}. Ours is \ST, the self-improving team, with its memory,
 Gatekeeper, exam protocol and visualiser (Fig.~\ref{fig:studio}), plus cosmetic water, watch and turntable changes to the
-benchmark's web client that touch neither simulation nor scoring. We claim that a team of cheap
-open models can lift a weak loader by rewriting the system around it, keeping only changes that
-measurably help, and that the lift survives on unseen tasks. Contributions:
+benchmark's web client that touch neither simulation nor scoring. We asked whether cheap open
+models can lift a weak loader by rewriting the system around it, keeping only changes that
+measurably help. The honest answer is: not yet, and we can show why. Contributions:
 \begin{itemize}
 \item \ST, a team whose rewritable state is a typed, versioned \emph{genome}, edited only through six
 typed operations, with the judging roles (memory accounting, acceptance) in deterministic code: the
 team can change how it plays, never how it is graded.
-\item A paired acceptance rule over shared seeds in a deterministic simulator, a three-layer memory
-with shrunken Bayesian confidence, and a held-out exam on task families with new kinds and soils.
-\item An end-to-end run on open Nemotron models, with lineage, costs and limits.
+\item A paired acceptance rule, a three-layer memory with shrunken Bayesian confidence, and a
+held-out exam with a replication protocol (12 drills $\times$ 2 repeats).
+\item A diagnosis of \emph{learned superstitions}, with a noise analysis, and design rules for
+self-improving loops on noisy weak models: more pairs and repeats, a statistical acceptance test
+instead of a fixed margin, and physics falsification of each learned rule before it is kept.
 \end{itemize}
 
 \section{Related Work}
@@ -271,9 +275,7 @@ same seeds. Let $P$ be the drills both played validly and $x_t$ the share on dri
 \end{equation}
 and the decision is void if $|P|<3$. Agent failures (turn or token limit, nothing loaded) score what
 they scored; \emph{invalid} episodes (provider or harness errors) are replayed on the same task and
-seed up to twice, and drills still unpaired are dropped for both genomes.\footnote{In a pilot, HTTP 429s from a shared endpoint were first scored as agent failures and
-generation~2 had to be voided: on cheap shared endpoints, an acceptance rule must not confuse
-infrastructure noise with policy quality.} Pairing matters because episodes vary enormously (G0 scored 88\% on one Tutorial drill and 0\%
+seed up to twice, and drills still unpaired are dropped for both genomes.\footnote{In a pilot, HTTP 429s were first scored as agent failures and a generation was voided.} Pairing matters because episodes vary enormously (G0 scored 88\% on one Tutorial drill and 0\%
 on a Weeknight drill); with deterministic physics it cancels drill difficulty. The accepted
 candidate with the largest $\bar\Delta$ becomes the incumbent; its validation episodes are the next
 practice set.
@@ -287,74 +289,41 @@ baking tray, tin, platter; burnt sugar, overnight soils). Nothing is learned fro
 \section{Experimental Setup}
 All models run on Crusoe Managed (serverless) Inference via an OpenAI-compatible API, with a
 client-side rate limiter and byte-stable prompts for prefix caching (83--90\% of input tokens hit
-the cache in smoke runs). In a sweep (40-request bursts, 60\,s at 8 in flight) only Nemotron-3.5-Lightning and
-Gemma-4-31B returned HTTP 429s; the Nano models sustained ${\sim}300$ calls/min at 370\,ms median.
-
-\begin{table}[t]
-\centering\footnotesize
-\setlength{\tabcolsep}{3.2pt}
-\begin{tabular}{@{}lrrrr@{}}
-\toprule
-Loader (thinking) & Share & Loaded/clean & Turns & Time \\
-\midrule
-DeepSeek-V4.1-Flash (off) & 100\% & 12/12 & 21 & 90\,s \\
-Qwen3.8-27B (off) & 100\% & 12/12 & 19 & 199\,s \\
-GLM-5.3-Flash (low) & 93\% & 10/10 & 40 & 97\,s \\
-DeepSeek-V4-Flash (off) & 89\% & 12/11 & 40 & 89\,s \\
-gpt-oss-120b (low) & 49\% & 8/7 & 40 & 154\,s \\
-Nemotron-3-Nano-30B (low) & 41\% & 5/5 & 40 & 870\,s \\
-\textbf{Nemotron-3.5-Super-VL (off)} & \textbf{21\%} & \textbf{3/3} & \textbf{40} & \textbf{129\,s} \\
-Nemotron-3-Nano-30B / Omni (off) & 0\% & 1/0, 2/0 & loops & \\
-\bottomrule
-\end{tabular}
-\caption{Choosing the loader: one smoke per model on the same 12-item Breakfast drill (seed 7,
-61 points, 40-turn cap). We take the weakest that still plays.}
-\label{tab:select}
-\end{table}
-
-\textbf{Choosing a weak loader.} A saturated loader leaves the Gatekeeper nothing to measure
-(Table~\ref{tab:select}). Nemotron-3.5-Super-VL without thinking is the weakest that still plays:
-all it loads is clean, but it runs out of turns. Without thinking the Nano models loop; with it, Nano-30B plays but takes
-${\sim}6\times$ Super-VL's wall time, too slow for an evolution loop. The pilot's loader, Nemotron-3.5-Lightning (41--70\%), was throttled to ${\sim}5$ calls/min.
+the cache in smoke runs). \textbf{Choosing a weak loader.} A saturated loader leaves the Gatekeeper
+nothing to measure. On one 12-item drill, DeepSeek-V4.1-Flash and Qwen3.8-27B scored 100\%,
+gpt-oss-120b 49\%, Nano-30B with thinking 41\% at ${\sim}6\times$ the wall time (without, it
+looped); Nemotron-3.5-Super-VL without thinking scored 21\% (all it loaded clean) and is our
+loader. A Lightning pilot was throttled by its shared endpoint to ${\sim}5$ calls/min.
 
 \textbf{Protocol.} A drill is 12 items of a DishwasherBench level drawn by seed, cutlery in
-proportion. The final run (\texttt{\RunId}) has \Generations{} generations: \PracticeTasks{}
+proportion. The evolution run (\texttt{\RunId}) has \Generations{} generations: \PracticeTasks{}
 baseline practice drills, \ProposalsPerGen{} proposals and \ValTasks{} paired fresh validation
-drills per generation, $\delta=\Margin$, a \TurnCap-turn cap, 8 game servers and 8 episodes in flight, then an exam on \ExamTasks{} held-out drills
-(Table~\ref{tab:exam}). Washes use the fast tier (4\,mm blocks rather than 2\,mm), whose
-verdicts agree with the official tier's on 91\% of the standard load and 97\% of pieces on the
-course levels \citep{composo2026dishwasherbench}.
-
-\textbf{Baseline.} G0 scored \BaselinePractice{} in practice: Breakfast 56\% (8 of 8 loaded items
-clean), Tutorial 44\% (8 of 8, washed early), Weeknight 32\% (3 of 5), Lunch 24\% (2 of 2). It fails
-at committing within the turn budget, not at knowing what washes clean.
+drills per generation, $\delta=\Margin$, a \TurnCap-turn cap and 8 episodes in flight. G0 and the
+champion then sat a 4-drill held-out exam and, separately, a \emph{replication}: 12 held-out drills
+from levels 5--7, each played twice by both genomes. Washes use the fast tier (4\,mm blocks rather
+than 2\,mm), whose verdicts agree with the official tier's on 91\% of the standard load and 97\%
+of pieces on the course levels \citep{composo2026dishwasherbench}. G0 scored \BaselinePractice{}
+in practice, loading few items but nearly all of them clean: it fails at commitment, not physics.
 
 \section{Results}
 \begin{table}[t]
 \centering\footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}llrrrr@{}}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcc@{}}
 \toprule
-Exam drill & Source & Avail. & G0 & Champ. & $\Delta$ \\
+G0 vs.\ champion \ChampionId & 4-drill exam & 12-drill replication \\
 \midrule
-Family \#0 & mixed-family & 59 & \ExBFamZero & \ExCFamZero & \ExDFamZero \\
-Baking \#1 & baking-day & 71 & \ExBBakOne & \ExCBakOne & \ExDBakOne \\
-Party \#2 & dinner-party & 77 & \ExBPtyTwo & \ExCPtyTwo & \ExDPtyTwo \\
-Family \#3 & mixed-family & 71 & \ExBFamThree & \ExCFamThree & \ExDFamThree \\
-\midrule
-Total points & & 278 & \ExBTotal & \ExCTotal & \\
-Mean share & & & \BaselineExam & \ChampionExam & \ExamDelta \\
+Paired drills (valid pairs) & 4 & 12 $\times$ 2 repeats (23) \\
+Mean share, G0 $\to$ champion & 46.0\% $\to$ 63.7\% & 46.0\% $\to$ 45.7\% \\
+$\Delta$ (pp) & $+17.8$ & $-0.3$ \\
+95\% CI (bootstrap) & n/a & $[-13, +12]$ \\
+Wins / losses / ties & 3 / 1 / 0 & 12 / 9 / 2 \\
+Sign test $p$ & 0.31 (one-sided) & 0.66 (Wilcoxon 0.77) \\
 \bottomrule
 \end{tabular}
-\caption{Held-out exam: points per 12-item drill for G0 and the champion \ChampionId, same drills and seeds, fast tier; $\Delta$ in pp of share.}
+\caption{Held-out results, same genomes, fast tier. The first exam's gain did not replicate.}
 \label{tab:exam}
 \end{table}
-
-\textbf{Exam.} The champion (\ChampionId, accepted in generation \ChampionGen) scores a mean share of
-\ChampionExam{} against \BaselineExam{} for G0 (\ExamDelta\,pp), ahead
-on \ExamWins{} drills (Table~\ref{tab:exam}), with no invalid episodes. It loads \LoadedChampion{} items against \LoadedBaseline{} (of 48),
-clean-of-loaded \CleanRateChampion{} vs.\ \CleanRateBaseline: the gain is commitment, bought with a
-few dirty items, as the baseline's failure mode predicts.
 
 \begin{table}[t]
 \centering\footnotesize
@@ -376,17 +345,19 @@ per generation). $^\ast$$+0.129$, accepted, under the corrected rule (fn.~2).}
 \label{tab:decisions}
 \end{table}
 
-\textbf{Evolution.} The Gatekeeper accepted \Accepted{} of \Proposed{} candidates
-(Table~\ref{tab:decisions}); memory ended with \LessonsStored{} lessons from
-\EpisodesPlayed{} episodes (plus 2 replays). The champion differs from G0 by three playbook rules and
-nothing else: R1.1 moves one cereal bowl off a tilted upper-rack stance; R2.1 ``Glasses and tumblers: upper\_rack, mouth\_down''; R2.2 ``Cutlery:
-cutlery\_basket, upright'', the last two restating top memory lessons ($\kappa=0.69$). Every structural edit (planner, memory brief, preflight)
-was rejected.\footnote{In generation~1, G0's Weeknight attempt that blocked the door (0 of 87) was wrongly
-replayed as invalid. Under the rule as since fixed (agent-caused non-washes score 0), the Memory
-Brief would have been accepted at $+0.129$. The bug made the Gatekeeper more conservative and did
-not touch the champion's lineage.}
+\textbf{Evolution.} The system ran end to end: the Gatekeeper accepted \Accepted{} of \Proposed{}
+candidates (Table~\ref{tab:decisions}), both memory-derived playbook rules, and rejected every
+structural edit (planner, memory brief, preflight).\footnote{In generation~1, G0's Weeknight attempt
+that blocked the door (0 of 87) was wrongly replayed as invalid. Under the rule as since fixed, the
+Memory Brief would have been accepted at $+0.129$; the champion's lineage is unaffected.} The
+champion differs from G0 by three rules: R1.1 ``Do not place \texttt{cereal\_bowl\_vitrelle\_159} on
+upper\_rack/mouth\_down\_tilted\_45'' ($+25.1$\,pp in validation), and R2.1 ``Glasses and tumblers:
+upper\_rack, mouth\_down'' with R2.2 ``Cutlery: cutlery\_basket, upright'' ($+15.7$\,pp).
 
-
+\textbf{Exam and replication.} On the first 4-drill exam the champion scored 63.7\% against 46.0\%
+($+17.8$\,pp, 3 of 4 wins). It did not replicate: on 12 held-out drills played twice (23 valid
+pairs) the champion scored 45.7\% against 46.0\%, $\Delta=-0.3$\,pp, 95\% CI $[-13,+12]$, sign
+test $p=0.66$ (Table~\ref{tab:exam}).
 
 \begin{table}[t]
 \centering\footnotesize
@@ -404,44 +375,53 @@ Mouth up & 0\% (0/11) & 0.488 [.28,.71] & 224\,ml [140,302] \\
 \label{tab:hollow}
 \end{table}
 
-\textbf{Finding 1 (quantified, not discovered).} We report, with appropriate gravity, that a cup
-stood mouth up keeps half its grime. In 108 deterministic fast-tier washes of every hollow kind in
-the course levels, each item alone in its rack (73 settled in a classifiable stance; we analyse the resting stance), drinkware and ramekins were always clean mouth down, never mouth up
-(Table~\ref{tab:hollow}). Bowls mouth up still washed clean (8/8) but kept 1.17\,L of
-water each (95\% CI 0.66--1.78); one 4-quart mixing bowl held 2.9\,L and starved the pump. Over
-the 15 hollow items that reached both stances, mouth down adds 60\,pp to P(clean) (95\% CI 33--87;
-odds ratio ${\approx}130$ with a 0.5 correction), and no tilt from 0 to 45$^\circ$ beats another.
-The effect is long known (phenomenon P01 in the benchmark's docs \citep{composo2026dishwasherbench});
-the number is new, for one machine and programme, the fast tier, items alone and small $n$ per kind.
-The team had found it from experience: the champion's rule R2.1, ``Glasses and tumblers:
-upper\_rack, mouth\_down'', is this effect.
+\textbf{Finding 1 (quantified, not discovered).} A cup stood mouth up keeps half its grime. In 108
+deterministic fast-tier washes of every hollow kind in the course levels, each item alone (73
+classifiable by resting stance), drinkware and ramekins were
+always clean mouth down and never mouth up (Table~\ref{tab:hollow}). Bowls mouth up still washed
+clean (8/8) but kept 1.17\,L of water each (CI 0.66--1.78); one mixing bowl held 2.9\,L and starved
+the pump. Over 15 hollow items seen in both stances, mouth down adds 60\,pp to P(clean) (CI
+33--87; odds ratio ${\approx}130$ with a 0.5 correction); no tilt from 0 to 45$^\circ$ beats
+another. The effect is long known (phenomenon P01 \citep{composo2026dishwasherbench}); the number
+is new, for one machine and programme, the fast tier, items alone and small $n$ per kind.
 
-\textbf{Cost.} \WallTime. The loader made 1{,}481 requests (38.24M input tokens, \CacheHit{}
-cached; 0.43M out); the other roles 21 requests, under 0.1M tokens. Cost: \Cost.
+\textbf{Learned superstitions.} We report, with appropriate gravity, that our team became
+superstitious. R2.1 is real physics: it is Finding 1. R1.1 is not. It rested on one dirty bowl in
+two loads, and the controlled sweep washed every mouth-down bowl clean, 45$^\circ$ included. The
+memory had never seen a mouth-up hollow item, so it learned ``mouth down'' from successes alone;
+and the team's largest real loss, items left out (cereal bowls were left out 21 times and never
+loaded), was never targeted. The Gatekeeper could not tell the true rule from the superstition,
+because the loader's sampling noise swamps the margin: the same genome on the same drill differed
+by 0.20 share on average between repeats (up to 0.80; one drill scored 0.000 and 0.803). With a
+per-drill SD near 0.3, three or four paired drills cannot resolve a 3\,pp margin, and even 23
+pairs resolve only about $\pm12$\,pp; resolving $\pm3$\,pp would take on the order of 400 pairs.
+An ablation of the rules is in progress.
+
+\textbf{Cost.} \WallTime; the loader used 38.24M input tokens (\CacheHit{} cached), the other
+roles under 0.1M. Cost: \Cost.
 
 \section{Discussion and Limitations}
-Physics scores, code decides, models propose
-\citep{zheng2023judge,amodei2016concrete}. For this loader, crisp rules from memory beat extra
-scaffolding: planner, brief and preflight all lost. In the Lightning pilot the opposite held (Planner
-accepted at $+0.135$, a bowl rule rejected at $-0.095$). The best scaffold seems loader-specific,
-which is why it must be measured, not assumed.
-
-\textbf{Limitations.} \emph{Small $n$}: four exam drills with a single seed each, so $+17.8$\,pp
-is a point estimate; a one-sided sign test on 3 wins of 4 gives $p=5/16\approx0.31$
-\citep{dror2018hitchhiker}. This is a demonstration, not a statistically established effect.
-\emph{One machine}: one dishwasher, programme and detergent; the exam tests transfer to new items,
-soils and loads, not new physics. \emph{Sampling}: pairing removes task variance, not policy
-variance; the fast tier changes a few percent of verdicts.
-\emph{Multiple comparisons}: keeping the best of several candidates biases validation gains
-upwards, and repeated accept/reject overfits a benchmark
-\citep{gelman2013forking,dwork2015reusable,benjamini1995fdr}; hence the held-out exam.
-\emph{Margin}: $\delta=\Margin$ is about one item on one drill, below the sampling noise; a
-sequential test \citep{wald1945sequential} would fix it.
+The architecture held: physics scored, code decided, models proposed
+\citep{zheng2023judge,amodei2016concrete}, and full logs let us find out \emph{why} a gain vanished. What failed is the statistics of selection
+\citep{gelman2013forking,dwork2015reusable,benjamini1995fdr}: a fixed margin on three drills
+accepted one true rule and one superstition with equal confidence. Three design rules follow for
+self-improving loops on noisy weak models. (i)~Many more paired drills, with repeats per drill.
+(ii)~A statistical acceptance test (a sequential test \citep{wald1945sequential} or a confidence
+bound \citep{dror2018hitchhiker}) instead of a fixed margin. (iii)~\emph{Falsify the lesson, not
+just score the genome}: test each learned rule with cheap controlled washes before it enters the
+playbook, which a deterministic simulator makes possible. \emph{Limitations}: one machine, programme, detergent and
+the fast tier; one evolution run; 23 pairs bound the effect only to ${\pm}12$\,pp.
 
 \section{Conclusion}
-A team of open, inexpensive models can rewrite the system around a weak loader, keep only what the
-physics confirms, and carry the gain to objects it has never handled.  Its reward
-cannot be argued with: exactly what recursive self-(home-)improvement needs. 
+A team of open models can rewrite its own system and keep only what measurably helps; ours learned
+one true rule and one superstition and could not tell them apart. The fix is better evidence: more
+pairs, real tests, physics checks of every lesson. Beyond that, \emph{we propose} (we have not done
+it) the next recursion: a scaffold can only steer a noisy policy, so distil the team's best
+trajectories, already logged token by token, into the weak loader by LoRA SFT on Crusoe Serverless
+Fine-Tuning, which supports Nemotron-3.5-Lightning;\footnote{\url{https://docs.crusoecloud.com/serverless-fine-tuning/available-models}}
+a Self-Serve Deployment would also escape the throttling. The aim is lower variance between
+repeats, so the paired test gains power: the scaffold discovers, the Gatekeeper verifies,
+fine-tuning consolidates. Recursive self-(home-)improvement needs a scientist on the team.
 
 \paragraph{Acknowledgements.} We thank Composo for releasing DishwasherBench (MIT), Crusoe for inference and NVIDIA for the Nemotron models.
 
