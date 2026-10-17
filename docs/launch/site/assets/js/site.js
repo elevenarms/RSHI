@@ -11,7 +11,7 @@
       });
       document.querySelectorAll('[data-ph-href]').forEach(function (el) {
         var val = v[el.getAttribute('data-ph-href')];
-        if (typeof val === 'string' && val.trim()) { el.setAttribute('href', val); el.classList.add('ready'); }
+        if (typeof val === 'string' && val.trim()) { el.setAttribute('href', val); el.classList.add('ready'); el.classList.remove('pending'); }
       });
     })
     .catch(function () { /* opened from file:// or offline: placeholders stay visible */ });
