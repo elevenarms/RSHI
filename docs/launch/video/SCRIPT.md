@@ -249,6 +249,19 @@ for glasses & cutlery`. Footnote `validation share; fresh seeds each generation`
 **On-screen text.** As above; small `loaded 23 → 35 of 48 · clean-of-loaded 100% → 91%`.
 **Sound.** Music drops to a single held chord at the reveal of `63.7%`; nothing else.
 
+### S10b Finding 1: 2:37–2:47 · MANIM (`Finding1`)
+
+**Visual.** Black `FINDING` tag top-left. A deadpan headline types on: `Mouth up: 0 of 11 clean.
+Mouth down: 26 of 26.` Beneath it, a small table: soil left 49% vs 0%; water held 224 ml vs 0 ml;
+bowls held 1.17 L each mouth up. Caption: `quantified in simulation · DishwasherBench P01`.
+
+**VO.**
+> Finding one. / Cups, mugs and glasses loaded mouth up came out clean zero times in eleven. /
+> Mouth down, twenty-six for twenty-six. // We report this with appropriate gravity.
+
+**On-screen text.** As above (source: `docs/crew/insights/INSIGHTS.md`, FINDING 1).
+**Sound.** Music only.
+
 ### S11 The honest limits: 2:37–2:50 · MANIM (`Limits`)
 
 **Visual.** The exam numbers shrink to the top-left corner. A plain "footnotes" panel draws, like
