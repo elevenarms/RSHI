@@ -1,0 +1,82 @@
+/**
+ * The crew's HTTP server (node:http): `/api/events` (SSE: every past event of the run, then live),
+ * `/api/events.json`, `/api/runs`, and the studio's built files (apps/studio/dist, SPA fallback).
+ */
+
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { createServer, type Server } from 'node:http';
+import { extname, join, normalize } from 'node:path';
+import type { CrewEvent } from './contracts.ts';
+import type { EventBus } from './bus.ts';
+
+const TYPES: { [ext: string]: string } = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.woff2': 'font/woff2',
+  '.ico': 'image/x-icon',
+};
+
+export interface CrewServerOptions {
+  readonly port: number;
+  readonly bus: EventBus;
+  readonly studioDir: string;
+  readonly runsDir: string;
+}
+
+export function startCrewServer(o: CrewServerOptions): Promise<Server> {
+  const server = createServer((req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    res.setHeader('access-control-allow-origin', '*');
+    if (url.pathname === '/api/events') {
+      res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
+      const send = (e: CrewEvent): void => {
+        res.write(`data: ${JSON.stringify(e)}\n\n`);
+      };
+      for (const e of o.bus.events) send(e);
+      const off = o.bus.subscribe(send);
+      const beat = setInterval(() => res.write(': heartbeat\n\n'), 15_000);
+      req.on('close', () => {
+        off();
+        clearInterval(beat);
+      });
+      return;
+    }
+    if (url.pathname === '/api/events.json') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(o.bus.events));
+      return;
+    }
+    if (url.pathname === '/api/runs') {
+      const runs = existsSync(o.runsDir)
+        ? readdirSync(o.runsDir)
+            .filter((d) => existsSync(join(o.runsDir, d, 'events.jsonl')))
+            .map((d) => ({ runId: d, updatedAt: statSync(join(o.runsDir, d, 'events.jsonl')).mtime.toISOString() }))
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        : [];
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ current: o.bus.runId, runs }));
+      return;
+    }
+    // Static studio.
+    if (!existsSync(join(o.studioDir, 'index.html'))) {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end('<!doctype html><title>Crew</title><p>The studio is not built. Run <code>pnpm --filter @spotless/studio build</code>. Events: <a href="/api/events.json">/api/events.json</a></p>');
+      return;
+    }
+    const rel = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '');
+    let file = join(o.studioDir, rel);
+    if (!file.startsWith(o.studioDir) || !existsSync(file) || statSync(file).isDirectory()) file = join(o.studioDir, 'index.html');
+    res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
+    res.end(readFileSync(file));
+  });
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(o.port, '127.0.0.1', () => resolve(server));
+  });
+}
