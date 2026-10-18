@@ -7,7 +7,7 @@
  *  - `/api/events.json` the events emitted so far, as a JSON array.
  *  - `/fake/run.jsonl`  the whole simulated run (for `?replay=fake/run.jsonl&speed=4&t=60`).
  *  - `/fake/watch.html` a placeholder for the game's watch page.
- *  - everything else:   apps/studio/dist (if built).
+ *  - everything else:   studio/dist (if built).
  */
 
 import { createServer, type ServerResponse } from 'node:http';

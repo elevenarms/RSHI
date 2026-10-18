@@ -1,7 +1,7 @@
 /**
  * Screenshots of the sandbox at 1920×1080 (vite must be serving it on port 5175).
- *   tsx apps/studio/explore/shots.ts [variant ...]      e.g. `1 2 3`
- * Writes apps/studio/screenshots/explore-v<variant>-<moment>.png.
+ *   tsx studio/explore/shots.ts [variant ...]      e.g. `1 2 3`
+ * Writes studio/screenshots/explore-v<variant>-<moment>.png.
  */
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';

@@ -26,8 +26,9 @@ import { endEpisodeLog } from './calllog.ts';
 
 export type Tier = 'fast' | 'official';
 
-export const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-export const CREW_ROOT = join(REPO_ROOT, '.crew');
+export { CREW_ROOT, RSHI_ROOT as REPO_ROOT } from './paths.ts';
+import { CREW_ROOT, RSHI_ROOT as REPO_ROOT } from './paths.ts';
+void fileURLToPath;
 
 /** apps/web/dist must exist: the game server serves the watch page from it. */
 export function ensureWebBuilt(log: (s: string) => void): void {

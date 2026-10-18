@@ -1,6 +1,6 @@
 # SPARKLETEAM: a dishwasher-loading team that gets better with experience
 
-SPARKLETEAM (the crew: `packages/crew`, package `@spotless/crew`) is a team of agents on
+SPARKLETEAM (the crew: `crew`, package `@spotless/crew`) is a team of agents on
 [Crusoe Managed Inference](https://crusoe.ai) that plays Spotless, the dishwasher-loading game of
 DishwasherBench, and improves itself between runs. After every generation it reviews what worked
 item by item, rewrites its own prompts, playbook, tool policy and team structure, and keeps a
@@ -169,7 +169,7 @@ Honest limits:
 
 ## Studio
 
-The Studio (`apps/studio`, served at http://127.0.0.1:8790) is mission control for a run:
+The Studio (`studio`, served at http://127.0.0.1:8790) is mission control for a run:
 
 - **Team graph** with message packets flowing between roles as they talk.
 - **Live 3D view** of the loader at work: the game page embedded in watch mode, with cosmetic
@@ -213,7 +213,7 @@ pnpm --filter @spotless/crew crew serve --run <id>
 
 ## Results
 
-Final run `2026-10-17T20-49-49-evolve`, archived in `packages/crew/runs/2026-10-17T20-49-49-evolve`
+Final run `2026-10-17T20-49-49-evolve`, archived in `crew/runs/2026-10-17T20-49-49-evolve`
 (events, every model call, episode records and transcripts, memory snapshot, `report.md`). Replay:
 `pnpm --filter @spotless/crew crew serve --run 2026-10-17T20-49-49-evolve`.
 
@@ -253,8 +253,8 @@ the cutlery basket (0.69); place items with tomato sauce on the lower rack on ed
 
 ## Where things are
 
-- `packages/crew/src/contracts.ts`: the types (genome, edits, episodes, lessons, decisions, events).
-- `packages/crew/src/team`: the roles.
-- `packages/crew/src/memory`: the Librarian.
-- `apps/studio`: the visualizer.
+- `crew/src/contracts.ts`: the types (genome, edits, episodes, lessons, decisions, events).
+- `crew/src/team`: the roles.
+- `crew/src/memory`: the Librarian.
+- `studio`: the visualizer.
 - `docs/crew/SUBMISSION.md`: short factual project summary.

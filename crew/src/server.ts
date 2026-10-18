@@ -1,6 +1,6 @@
 /**
  * The crew's HTTP server (node:http): `/api/events` (SSE: every past event of the run, then live),
- * `/api/events.json`, `/api/runs`, and the studio's built files (apps/studio/dist, SPA fallback).
+ * `/api/events.json`, `/api/runs`, and the studio's built files (studio/dist, SPA fallback).
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';

@@ -19,7 +19,7 @@ import { exportSft } from './sft.ts';
 import { gzipSync } from 'node:zlib';
 import { setCallLog, syncCallLog } from './calllog.ts';
 import { join } from 'node:path';
-import { loadEnvFile } from '@spotless/bench';
+import { loadCrewEnv, STUDIO_DIST } from './paths.ts';
 import type { CrewEvent, Genome, TaskSpec } from './contracts.ts';
 import { CREW_PORT } from './contracts.ts';
 import { EventBus, eventLine, readEvents } from './bus.ts';
@@ -32,7 +32,7 @@ import { CONCURRENCY, closeGames, CREW_ROOT, ensureWebBuilt, gameFor, REPO_ROOT,
 import { startCrewServer } from './server.ts';
 import { drill, testTasks, trainTasks } from './tasks.ts';
 
-loadEnvFile();
+loadCrewEnv();
 
 function args(argv: string[]): { cmd: string; flags: Map<string, string> } {
   const flags = new Map<string, string>();
@@ -55,7 +55,7 @@ const num = (flags: Map<string, string>, k: string, d: number): number => {
   return v === undefined ? d : Number(v);
 };
 
-const STUDIO_DIR = join(REPO_ROOT, 'apps', 'studio', 'dist');
+const STUDIO_DIR = STUDIO_DIST;
 const RUNS_DIR = join(CREW_ROOT, 'runs');
 
 function newRun(mode: string, existing?: string): { runId: string; runDir: string; bus: EventBus } {
@@ -113,7 +113,7 @@ function readCheckpoint(runDir: string): Checkpoint | null {
   return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as Checkpoint) : null;
 }
 
-/** Archives the run into packages/crew/runs (CREW_AUTO_ARCHIVE=0 turns it off). Never breaks the run. */
+/** Archives the run into crew/runs (CREW_AUTO_ARCHIVE=0 turns it off). Never breaks the run. */
 function autoArchive(runDir: string): void {
   if (process.env['CREW_AUTO_ARCHIVE'] === '0' || process.env['CREW_FAKE'] === '1') return;
   try {

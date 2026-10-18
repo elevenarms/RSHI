@@ -1,6 +1,6 @@
 /**
  * Archiving a run into the repository: `.crew/runs/<id>` (and a snapshot of the memory) is copied
- * into the tracked `packages/crew/runs/<id>/`. Logs are gzipped (split into parts so that no file
+ * into the tracked `crew/runs/<id>/`. Logs are gzipped (split into parts so that no file
  * passes ~45 MB), episode records and transcripts are kept (gzipped when over 1 MB), pictures are
  * left out. Everything is scanned for the API key and `authorization` strings first: a hit
  * aborts. A manifest lists every file with its size, sha256 and line count.
@@ -66,7 +66,7 @@ function archiveFile(src: string, outDir: string, rel: string, entries: Entry[])
   else writeOut(outDir, rel, data, entries, src);
 }
 
-/** Archives one run (and the memory) into packages/crew/runs/<id>/; returns the manifest. */
+/** Archives one run (and the memory) into crew/runs/<id>/; returns the manifest. */
 export function archiveRun(runDir: string, memoryDir: string | null, root = ARCHIVE_ROOT): { dir: string; bytes: number; files: number } {
   const id = basename(runDir);
   const outDir = join(root, id);

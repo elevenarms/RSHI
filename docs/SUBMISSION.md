@@ -5,7 +5,7 @@ Crusoe x Cerebral Valley Recursive Agents Hackathon. Full technical description:
 
 ## What it does
 
-SPARKLETEAM (the crew: `packages/crew`, package `@spotless/crew`) is an agent team on Crusoe Managed Inference that
+SPARKLETEAM (the crew: `crew`, package `@spotless/crew`) is an agent team on Crusoe Managed Inference that
 plays Spotless, the dishwasher-loading game of DishwasherBench, and improves itself across runs.
 After each generation it reviews its episodes item by item, proposes changes to its own prompts,
 playbook, tool policy and team structure, and keeps a change only if it scores better than the
@@ -44,7 +44,7 @@ levels.
 - **Exam.** Training drills come from course levels 1-4; exam drills from levels 5-7, which
   contain item kinds and soils absent from training. Baseline genome (generation 0) and champion
   play the same exam drills and seeds. Everything runs on the fast wash tier, 8 shards.
-- **Studio.** `apps/studio` at http://127.0.0.1:8790: team graph, live 3D view, loader stream,
+- **Studio.** `studio` at http://127.0.0.1:8790: team graph, live 3D view, loader stream,
   evolution chart with lineage, memory panel, exam results. Runs can be replayed.
 - **Crusoe.** OpenAI-compatible Serverless Inference (`api.inference.crusoecloud.com/v1`),
   byte-stable prompts for prefix caching, per-model client-side rate limiting with jittered
@@ -64,7 +64,7 @@ pnpm --filter @spotless/crew crew serve --run <id>
 
 ## Results
 
-Final run `2026-10-17T20-49-49-evolve` (archived in `packages/crew/runs/`):
+Final run `2026-10-17T20-49-49-evolve` (archived in `crew/runs/`):
 
 | | |
 | --- | --- |
